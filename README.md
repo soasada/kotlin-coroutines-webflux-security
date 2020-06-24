@@ -40,11 +40,11 @@ And in two more folders:
 
 ## 3. Security
 
-Spring Security Webflux (like his brother the Servlet version) is all about filters, these filters are composed one after the other 
+Spring Security Webflux (like his brother the Servlet version) it's all about filters, these filters are composed one after the other 
 forming a chain. Every [ServerWebExchange](https://github.com/spring-projects/spring-framework/blob/master/spring-web/src/main/java/org/springframework/web/server/ServerWebExchange.java) (an exchange 
 it's commonly known as an object that holds request and response, this concept exists in other places like undertow web server) has 
-to go through this chain, Spring Security Webflux allow us to configure this chain ([SecurityWebFilterChain](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/SecurityWebFilterChain.java)) as we need and even 
-give us the possibility to have more than one chain per path. 
+to go through this chain. Spring Security Webflux allow us to configure the chain ([SecurityWebFilterChain](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/SecurityWebFilterChain.java)) as we need and even 
+give us the possibility to have more than one per path. 
 The filter chain for Spring Security Webflux has the following order:
 
      +---------------------------+
