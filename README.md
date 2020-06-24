@@ -40,6 +40,56 @@ And in two more folders:
 
 ## 3. Security
 
+Spring Security is all about filters added to a [ServerWebExchange](https://github.com/spring-projects/spring-framework/blob/master/spring-web/src/main/java/org/springframework/web/server/ServerWebExchange.java) (an exchange it's commonly known as an object that holds request and response, this concept exists in other places like undertow web server). 
+The Spring Security Webflux version follows the same path as the servlet version. The filter chain for Spring Security Webflux has the following path:
+
+     +------------------------+
+     |                        |
+     | HttpsRedirectWebFilter |
+     |                        |
+     +-----------+------------+
+                 |
+                 |
+                 |
+         +-------v-------+
+         |               |
+         | CorsWebFilter |
+         |               |
+         +-------+-------+
+                 |
+                 |
+                 |
+         +-------v-------+
+         |               |
+         | CsrfWebFilter |
+         |               |
+         +-------+-------+
+                 |
+                 |
+                 |
+    +------------v------------+
+    |                         |
+    | ReactorContextWebFilter |
+    |                         |
+    +------------+------------+
+                 |
+                 |
+                 |
+    +------------v------------+
+    |                         |
+    | AuthenticationWebFilter |
+    |                         |
+    +------------+------------+
+                 |
+                 |
+                 |
+    +----------------v-----------------+
+    |                                  |
+    | AnonymousAuthenticationWebFilter |
+    |                                  |
+    +----------------------------------+
+
+
 The Spring Security configuration in WebFlux projects is explicitly configured through [ServerHttpSecurity](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java) 
 object. This object is automatically injected by Spring Security through [ServerHttpSecurityConfiguration](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/annotation/web/reactive/ServerHttpSecurityConfiguration.java#L122) config class, that 
 initializes it with the following config:
