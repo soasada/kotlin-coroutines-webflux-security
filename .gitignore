@@ -50,7 +50,6 @@ project/boot/
 project/project
 
 *.iml
-package-lock.json
 dependency-reduced-pom.xml
 node/
 node_modules/
