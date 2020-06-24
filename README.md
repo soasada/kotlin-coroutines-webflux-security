@@ -12,7 +12,7 @@ I made lot of mistakes, if you find them (in the code or in the README), please 
 I'm assuming that you have some knowledge with Spring WebFlux (know what Mono and Flux is), so I will skip the explanation of WebFlux, 
 but I'm going to shed new light on how we can work with Mono and Flux with Kotlin coroutines in an imperative way.
 
-## Stack
+## 1. Stack
 
 First things first, the stack we are gonna use is the following:
 
@@ -26,6 +26,68 @@ First things first, the stack we are gonna use is the following:
 If you take a look at the parent [pom.xml](/pom.xml) of the project, you will see that we are compiling to java 11 
 but this project runs in a OpenJDK 14 JVM. This is because Kotlin does not support java 14 yet.
 
+## 2. Project Structure
+
+The project consists in two maven modules:
+
+* `backend-server` (Spring app)
+* `frontend-client` (Vue.js app)
+
+And in two more folders:
+
+* `.github` (CI/CD)
+* `data` (MongoDB scripts to initialize the database)
+
+## 3. Security
+
+The Spring Security configuration in WebFlux projects is explicitly configured through [ServerHttpSecurity](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java) 
+object. This object is automatically injected by Spring Security through [ServerHttpSecurityConfiguration](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/annotation/web/reactive/ServerHttpSecurityConfiguration.java) config class, that 
+initializes it with the following config:
+
+```java
+@Bean(HTTPSECURITY_BEAN_NAME)
+@Scope("prototype")
+public ServerHttpSecurity httpSecurity() {
+    ContextAwareServerHttpSecurity http = new ContextAwareServerHttpSecurity();
+    return http
+	    .authenticationManager(authenticationManager())
+		.headers().and()
+		.logout().and();
+}
+
+private ReactiveAuthenticationManager authenticationManager() {
+    if (this.authenticationManager != null) {
+        return this.authenticationManager;
+    }
+    if (this.reactiveUserDetailsService != null) {
+        UserDetailsRepositoryReactiveAuthenticationManager manager =
+			new UserDetailsRepositoryReactiveAuthenticationManager(this.reactiveUserDetailsService);
+        if (this.passwordEncoder != null) {
+            manager.setPasswordEncoder(this.passwordEncoder);
+        }
+        manager.setUserDetailsPasswordService(this.userDetailsPasswordService);
+        return manager;
+    }
+    return null;
+}
+```
+
+Which means that if you create your Spring Security configuration without touching nothing:
+
+```kotlin
+@Configuration
+@EnableWebFluxSecurity
+class MyWebfluxSecurityConfig
+```
+
+You will only need to add to the application context a bean of [ReactiveUserDetailsService](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/core/userdetails/ReactiveUserDetailsService.java) and you will have Authentication in your project.
+
+
+
+## 3.1 Authentication
+
+### 3.2 Authorization
+
 ## Build project
 
 1. Build frontend
@@ -36,7 +98,7 @@ but this project runs in a OpenJDK 14 JVM. This is because Kotlin does not suppo
 
 `mvn -U clean test package -pl :backend-server`
 
-## Mongo Index creation
+## MongoDB Index creation
 
 Index creation must be *explicitly* enabled, since Spring Data MongoDB version 3.0, to prevent undesired effects with collection lifecyle and performance impact. In our project when we add a new `@Document` class, if this document class has any index, this index should be created manual. See [002_create_customer_collection.js](/data/mongo/002_create_customer_collection.js) for more info.
 
