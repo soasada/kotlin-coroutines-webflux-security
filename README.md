@@ -43,7 +43,15 @@ And in two more folders:
 Spring Security Webflux (like his brother Servlet version) is all about filters, added to a [ServerWebExchange](https://github.com/spring-projects/spring-framework/blob/master/spring-web/src/main/java/org/springframework/web/server/ServerWebExchange.java) (an exchange it's commonly known as an object that holds request and response, this concept exists in other places like undertow web server). 
 We can configure the filter chain as we need. The filter chain for Spring Security Webflux has the following path:
 
-     +------------------------+
+     +---------------------------+
+     |                           |
+     | HttpHeaderWriterWebFilter |
+     |                           |
+     +-----------+---------------+
+                 |
+                 |
+                 |
+     +-----------v------------+
      |                        |
      | HttpsRedirectWebFilter |
      |                        |
