@@ -16,6 +16,8 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 14
+      - name: Test backend
+        run: mvn -B clean test -pl :backend-server
       - name: Set up Node 14
         uses: actions/setup-node@v2-beta
         with:
@@ -36,5 +38,3 @@ jobs:
         run: |
           npm install frontend-client --prefix ./frontend-client
           npm --prefix frontend-client run test:unit
-      - name: Test backend
-        run: mvn -B clean test -pl :backend-server
