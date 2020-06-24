@@ -50,9 +50,9 @@ initializes it with the following config:
 public ServerHttpSecurity httpSecurity() {
     ContextAwareServerHttpSecurity http = new ContextAwareServerHttpSecurity();
     return http
-	    .authenticationManager(authenticationManager())
-		.headers().and()
-		.logout().and();
+        .authenticationManager(authenticationManager())
+        .headers().and()
+        .logout().and();
 }
 
 private ReactiveAuthenticationManager authenticationManager() {
@@ -61,7 +61,7 @@ private ReactiveAuthenticationManager authenticationManager() {
     }
     if (this.reactiveUserDetailsService != null) {
         UserDetailsRepositoryReactiveAuthenticationManager manager =
-			new UserDetailsRepositoryReactiveAuthenticationManager(this.reactiveUserDetailsService);
+            new UserDetailsRepositoryReactiveAuthenticationManager(this.reactiveUserDetailsService);
         if (this.passwordEncoder != null) {
             manager.setPasswordEncoder(this.passwordEncoder);
         }
@@ -80,7 +80,7 @@ Which means that if you create your Spring Security configuration without touchi
 class MyWebfluxSecurityConfig
 ```
 
-You will only need to add to the application context a bean of [ReactiveUserDetailsService](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/core/userdetails/ReactiveUserDetailsService.java) and you will have Authentication in your project.
+You will need to add to the application context a bean of [ReactiveUserDetailsService](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/core/userdetails/ReactiveUserDetailsService.java) and you will have Authentication in your project.
 
 
 
