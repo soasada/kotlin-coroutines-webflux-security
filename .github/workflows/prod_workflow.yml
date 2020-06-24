@@ -1,4 +1,4 @@
-name: Kemenu Dark CI
+name: Minimal Example CI
 
 on: [push]
 
@@ -17,4 +17,4 @@ jobs:
         with:
           java-version: 14
       - name: Test backend
-        run: mvn -B clean test -pl :kemenu-admin-backend
+        run: mvn -B clean test -pl :backend-server
