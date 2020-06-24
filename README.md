@@ -40,14 +40,16 @@ And in two more folders:
 
 ## 3. Security
 
-Spring Security Webflux (like his brother Servlet version) is all about filters, these filters are composed one after the other 
+Spring Security Webflux (like his brother the Servlet version) is all about filters, these filters are composed one after the other 
 forming a chain. Every [ServerWebExchange](https://github.com/spring-projects/spring-framework/blob/master/spring-web/src/main/java/org/springframework/web/server/ServerWebExchange.java) (an exchange 
 it's commonly known as an object that holds request and response, this concept exists in other places like undertow web server) has 
-to go through this chain. We can configure the filter chain as we need. The filter chain for Spring Security Webflux has the following path:
+to go through this chain, Spring Security Webflux allow us to configure this chain ([SecurityWebFilterChain](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/SecurityWebFilterChain.java)) as we need and even 
+give us the possibility to have more than one chain per path. 
+The filter chain for Spring Security Webflux has the following order:
 
      +---------------------------+
      |                           |
-     | HttpHeaderWriterWebFilter |
+     | HttpHeaderWriterWebFilter | (1)
      |                           |
      +-----------+---------------+
                  |
@@ -55,7 +57,7 @@ to go through this chain. We can configure the filter chain as we need. The filt
                  |
      +-----------v------------+
      |                        |
-     | HttpsRedirectWebFilter |
+     | HttpsRedirectWebFilter | (2)
      |                        |
      +-----------+------------+
                  |
@@ -63,7 +65,7 @@ to go through this chain. We can configure the filter chain as we need. The filt
                  |
          +-------v-------+
          |               |
-         | CorsWebFilter |
+         | CorsWebFilter | (3)
          |               |
          +-------+-------+
                  |
@@ -71,7 +73,7 @@ to go through this chain. We can configure the filter chain as we need. The filt
                  |
          +-------v-------+
          |               |
-         | CsrfWebFilter |
+         | CsrfWebFilter | (4)
          |               |
          +-------+-------+
                  |
@@ -79,7 +81,7 @@ to go through this chain. We can configure the filter chain as we need. The filt
                  |
     +------------v------------+
     |                         |
-    | ReactorContextWebFilter |
+    | ReactorContextWebFilter | (5)
     |                         |
     +------------+------------+
                  |
@@ -87,7 +89,7 @@ to go through this chain. We can configure the filter chain as we need. The filt
                  |
     +------------v------------+
     |                         |
-    | AuthenticationWebFilter |
+    | AuthenticationWebFilter | (6)
     |                         |
     +------------+------------+
                  |
@@ -95,7 +97,7 @@ to go through this chain. We can configure the filter chain as we need. The filt
                  |
     +------------v------------------------------+
     |                                           |
-    | SecurityContextServerWebExchangeWebFilter |
+    | SecurityContextServerWebExchangeWebFilter | (7)
     |                                           |
     +------------+------------------------------+
                  |
@@ -103,7 +105,7 @@ to go through this chain. We can configure the filter chain as we need. The filt
                  |
        +---------v-------------------+
        |                             |
-       | ServerRequestCacheWebFilter |
+       | ServerRequestCacheWebFilter | (8)
        |                             |
        +---------+-------------------+
                  |
@@ -111,7 +113,7 @@ to go through this chain. We can configure the filter chain as we need. The filt
                  |
        +---------v-------+
        |                 |
-       | LogoutWebFilter |
+       | LogoutWebFilter | (9)
        |                 |
        +---------+-------+
                  |
@@ -119,7 +121,7 @@ to go through this chain. We can configure the filter chain as we need. The filt
                  |
     +------------v------------------+
     |                               |
-    | ExceptionTranslationWebFilter |
+    | ExceptionTranslationWebFilter | (10)
     |                               |
     +------------+------------------+
                  |
@@ -127,17 +129,21 @@ to go through this chain. We can configure the filter chain as we need. The filt
                  |
     +------------v------------+
     |                         |
-    |  AuthorizationWebFilter |
+    |  AuthorizationWebFilter | (11)
     |                         |
     +-------------------------+
+    
+    - Figure 1 -
 
-Looking at the diagram above, if we want to implement a JWT based security for our API (our custom security for this use case), we 
-have to focus on two filters: [AuthenticationWebFilter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/AuthenticationWebFilter.java) and [AuthorizationWebFilter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authorization/AuthorizationWebFilter.java). Also you could find the order of the filters here: [SecurityWebFiltersOrder](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/SecurityWebFiltersOrder.java).
+Looking at the diagram above (Figure 1), if we want to implement a JWT based security for our API (our use case in this repository), we 
+have to focus on two filters: [AuthenticationWebFilter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/AuthenticationWebFilter.java) and [AuthorizationWebFilter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authorization/AuthorizationWebFilter.java), but let's start with the default configuration that Spring Security Webflux give to us. 
+Also, you could find the order of the filters here: [SecurityWebFiltersOrder](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/SecurityWebFiltersOrder.java).
 
 ### 3.1 Default Config 
 
 Spring Security Webflux configures the filter chain automatically for us in [WebFluxSecurityConfiguration](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/annotation/web/reactive/WebFluxSecurityConfiguration.java#L98), through [ServerHttpSecurity](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java) bean, 
-if we want something else we have to add this bean to our application context and explicitly configure it. Here you have the default config:
+if we want something else we have to add this bean to our application context and explicitly configure the chain through it. 
+Here you have the default config (copy and pasted from Spring Security source code):
 
 ```java
     /**
@@ -147,8 +153,9 @@ if we want something else we have to add this bean to our application context an
      */
     private SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         http
-            .authorizeExchange()
-                .anyExchange().authenticated();
+            .authorizeExchange() // this add authorization
+                .anyExchange() // this method disables role based authorization
+                .authenticated(); // Spring Security will authorize only authenticated users
         
         if (isOAuth2Present && OAuth2ClasspathGuard.shouldConfigure(this.context)) {
             OAuth2ClasspathGuard.configure(this.context, http);
@@ -162,7 +169,8 @@ if we want something else we have to add this bean to our application context an
         return result;
     }
 ```
-For example, if our application has the following config (minimal one):
+The method shown previously (`springSecurityFilterChain`) is only executed if Spring Security does not find a 
+SecurityWebFilterChain in the application context otherwise, it will load the SecurityWebFilterChain provided by us. For example, if our application has the following config (minimal one):
 
 ```kotlin
 @Configuration
@@ -170,11 +178,9 @@ For example, if our application has the following config (minimal one):
 class MyWebfluxSecurityConfig
 ```
 
-...and we don't have OAuth2 added as a dependency, Spring Security is going to add an HttpBasic and login form authentication 
-filters for all incoming requests.
-
-With ServerHttpSecurity bean we can disable, enable or setting ours filters instead of the default ones. This bean is injected by Spring Security through [ServerHttpSecurityConfiguration](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/annotation/web/reactive/ServerHttpSecurityConfiguration.java#L122) config class, that 
-initializes it with the following config:
+...and we don't have OAuth2 added as a dependency, Spring Security is going to add an http basic and form login authentication (with the famous login page)
+filters for all incoming requests. But wait..., where does that `ServerHttpSecurity` bean comes from? This bean is injected by Spring Security through [ServerHttpSecurityConfiguration](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/annotation/web/reactive/ServerHttpSecurityConfiguration.java#L122) config class, that 
+is initialized as follows (copy and pasted from Spring Security source code):
 
 ```java
 @Bean(HTTPSECURITY_BEAN_NAME)
@@ -204,28 +210,98 @@ private ReactiveAuthenticationManager authenticationManager() {
 }
 ```
 
-Which means that if you create your Spring Security configuration injecting this bean:
+...so apart from the http basic and form login, we get HTTP response headers [HeaderSpec](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java#L3269), 
+[LogoutWebFilter](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java#L3762) (with logout page) and 
+a [ReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManager.java) specifically [UserDetailsRepositoryReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/UserDetailsRepositoryReactiveAuthenticationManager.java) that extends 
+[AbstractUserDetailsReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/AbstractUserDetailsReactiveAuthenticationManager.java), if you have been working 
+with Spring Security Servlet this probably sound familiar to you. 
+
+UserDetailsRepositoryReactiveAuthenticationManager needs a bean of [ReactiveUserDetailsService](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/core/userdetails/ReactiveUserDetailsService.java) to be
+able to perform the authentication (this service is used to search the user that is doing the authentication 
+from database or an external service), adding a bean to your application context should do the trick, and you will have Authentication in your project.
+Here you can see the final minimal configuration:
 
 ```kotlin
 @Configuration
 @EnableWebFluxSecurity
 class MyWebfluxSecurityConfig {
-
+    // Please don't use this on production, implement one by yourself
     @Bean
-    fun configureSecurity(http: ServerHttpSecurity): SecurityWebFilterChain {
-        return http.build()
+    fun userDetailsService(passwordEncoder: PasswordEncoder): MapReactiveUserDetailsService {
+        return MapReactiveUserDetailsService(
+            User
+                .withDefaultPasswordEncoder() // deprecated
+                .username("user")
+                .password("user")
+                .roles("USER")
+                .build()
+        )
     }
 }
 ```
 
-Spring Security will add only HTTP response headers [HeaderSpec](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java#L3269), [LogoutWebFilter](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java#L3762) and 
-a [ReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManager.java) specifically [UserDetailsRepositoryReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/UserDetailsRepositoryReactiveAuthenticationManager.java) that extends 
-[AbstractUserDetailsReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/AbstractUserDetailsReactiveAuthenticationManager.java) if you have been working with Spring Security Servlet this probably sound familiar to you. 
-You will need to add to the application context a bean of [ReactiveUserDetailsService](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/core/userdetails/ReactiveUserDetailsService.java) and you will have Authentication in your project.
+### 3.2 Explicit Configuration
 
-## 3.1 Authentication
+So far so good, we saw what is doing Spring Security for us also, we know which order has the filter chain in Spring Security Webflux projects 
+and what is the default configuration. At this point, we probably know that ServerHttpSecurity 
+bean is used to disable, enable or setting ours filters instead of the default ones. In this section, I will explain how we can explicitly configure our chain.
 
-### 3.2 Authorization
+Previously, I mention that simple adding a method to our configuration that adds the ServerHttpSecurity bean to our application 
+context we could configure whatever we want. Imagine, we want to remove the default authentication filters, we can do it with the following code:
+
+```kotlin
+@Configuration
+@EnableWebFluxSecurity
+class MyWebfluxSecurityConfig {
+    /*
+        ServerHttpSecurity bean is injected by Spring Security, 
+        see section 3.1 for knowing where comes from.
+    */
+    @Bean
+    fun springWebFilterChain(http: ServerHttpSecurity) = http
+        .httpBasic().disable()
+        .formLogin().disable()
+        .build()
+}
+```
+
+Now if a client makes an HTTP request to our API is gonna be able to do it without problems, we 
+have no security at all. As we saw in 3.1 section, the http basic and the login form authentication filters were the only
+ones configured by Spring Security but, we disabled them = no authentication. 
+
+Also, Spring Security configured by default no role based (or token based) authorization, to refresh your memory:
+
+```java
+in WebFluxSecurityConfiguration.java
+...
+http
+    .authorizeExchange() // authorization config starts
+        .anyExchange() // disables authorization
+        .authenticated(); // Spring Security will authorize only authenticated users
+...
+``` 
+ 
+...which means Spring Security will authorize only authenticated users but, remember we disabled authentication! then, we by pass 
+the authorization filter.
+
+Let's add some authentication and authorization to our API!
+
+### 3.3 Authentication
+
+Spring Security Webflux default authentication filters are (by order in the chain):
+
+1. Http basic, see [ServerHttpSecurity:3038](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java#L3038)
+2. Form login, see [ServerHttpSecurity:3219](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java#L3219)
+3. OAuth2 family (in order to use this family of filters you need the `spring-boot-starter-oauth2-resource-server` dependency), see [ServerHttpSecurity:1179](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java#L1179)
+4. Anonymous family 
+
+(where we get the username 
+and password, validate against a database/service and if success we give the user an access and refresh token)
+
+### 3.4 Authorization
+
+(where 
+we check for every authenticated path the access token signature coming in every ServerWebExchange)
 
 ## Build project
 
