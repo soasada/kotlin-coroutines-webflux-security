@@ -16,7 +16,7 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 14
-      - name: Set up Node
+      - name: Set up Node 14
         uses: actions/setup-node@v2-beta
         with:
           node-version: '14'
