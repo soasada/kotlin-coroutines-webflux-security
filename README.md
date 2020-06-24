@@ -40,8 +40,8 @@ And in two more folders:
 
 ## 3. Security
 
-Spring Security is all about filters added to a [ServerWebExchange](https://github.com/spring-projects/spring-framework/blob/master/spring-web/src/main/java/org/springframework/web/server/ServerWebExchange.java) (an exchange it's commonly known as an object that holds request and response, this concept exists in other places like undertow web server). 
-The Spring Security Webflux version follows the same path as the servlet version. The filter chain for Spring Security Webflux has the following path:
+Spring Security Webflux (like his brother Servlet version) is all about filters, added to a [ServerWebExchange](https://github.com/spring-projects/spring-framework/blob/master/spring-web/src/main/java/org/springframework/web/server/ServerWebExchange.java) (an exchange it's commonly known as an object that holds request and response, this concept exists in other places like undertow web server). 
+We can configure the filter chain as we need. The filter chain for Spring Security Webflux has the following path:
 
      +------------------------+
      |                        |
@@ -83,11 +83,44 @@ The Spring Security Webflux version follows the same path as the servlet version
                  |
                  |
                  |
-    +----------------v-----------------+
-    |                                  |
-    | AnonymousAuthenticationWebFilter |
-    |                                  |
-    +----------------------------------+
+    +------------v------------------------------+
+    |                                           |
+    | SecurityContextServerWebExchangeWebFilter |
+    |                                           |
+    +------------+------------------------------+
+                 |
+                 |
+                 |
+       +---------v-------------------+
+       |                             |
+       | ServerRequestCacheWebFilter |
+       |                             |
+       +---------+-------------------+
+                 |
+                 |
+                 |
+       +---------v-------+
+       |                 |
+       | LogoutWebFilter |
+       |                 |
+       +---------+-------+
+                 |
+                 |
+                 |
+    +------------v------------------+
+    |                               |
+    | ExceptionTranslationWebFilter |
+    |                               |
+    +------------+------------------+
+                 |
+                 |
+                 |
+    +------------v------------+
+    |                         |
+    |  AuthorizationWebFilter |
+    |                         |
+    +-------------------------+
+
 
 
 The Spring Security configuration in WebFlux projects is explicitly configured through [ServerHttpSecurity](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java) 
