@@ -49,6 +49,7 @@ class WebConfig : WebFluxConfigurer {
                 .anyExchange().access(jwtAuthorizationManager)
                 .and()
                 .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+                .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
                 .build()
     }
 

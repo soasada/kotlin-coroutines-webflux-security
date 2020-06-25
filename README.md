@@ -372,16 +372,71 @@ At this point we have been customized our authentication flow, how should we aut
 
 ### 3.4 Authorization
 
-Spring Security could be used to give permission to our clients for use certain endpoints of our API, these permissions could be role based, scope based or both and are called [GrantedAuthority](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/core/GrantedAuthority.java). 
-We give permissions in the authentication process depending of the user we give one or the other. **(I will skip this part but is a WIP)**
+Spring Security could be used to give permissions to our clients for use certain endpoints of our API, these permissions could be role based, scope based or both and are called [GrantedAuthority](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/core/GrantedAuthority.java). 
+We give permissions in the authentication process, in the ServerAuthenticationSuccessHandler when we generate the tokens 
+we have to add the roles in form of claims in the JWT. **(This part but is WIP)**
 
-For now, we want to authorize users checking the validity of the JWT that comes in every request (for example, if we need to do a role based authorization this role should come in the JWT). The validity for us is:
+In our application, we have two types of endpoints where we want to restrict access: 
+
+1. The public ones: endpoints that serves static files and `/login` endpoint. 
+2. The private ones: the rest. 
+
+Spring Security Webflux has an interface that could be used to do authorization, this interface is: [ReactiveAuthorizationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authorization/ReactiveAuthorizationManager.java) and 
+is used to determine if an Authentication object has access to a specific endpoint. So basically, we have to implement our custom 
+ReactiveAuthorizationManager and configure our chain with it. Do you remember which method is the one that provides authorization config? If not here it is:
+
+```kotlin
+@Bean
+fun configureSecurity(http: ServerHttpSecurity,
+                      jwtAuthenticationFilter: AuthenticationWebFilter,
+                      jwtAuthorizationManager: ReactiveAuthorizationManager<AuthorizationContext>): SecurityWebFilterChain {
+    return http
+            .csrf().disable()
+            .logout().disable()
+            .authorizeExchange() // Configures authorization
+            .pathMatchers(*EXCLUDED_PATHS).permitAll() // We allow requests to EXCLUDED_PATHS
+            .anyExchange().access(jwtAuthorizationManager) // For any request use our custom manager 
+            .and()
+            .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+            .securityContextRepository(NoOpServerSecurityContextRepository.getInstance()) // we don't store sessions
+            .build()
+    }
+```
+
+With this configuration (see [WebConfig](https://github.com/soasada/kotlin-coroutines-webflux-security/blob/master/backend-server/src/main/kotlin/com/popokis/backend_server/application/WebConfig.kt)) we are adding an [AuthorizationWebFilter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authorization/AuthorizationWebFilter.java) 
+to our chain, the important thing here is that this filter is created with a [DelegatingReactiveAuthorizationManager](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authorization/DelegatingReactiveAuthorizationManager.java) that holds a 
+ReactiveAuthorizationManager for each path matcher we configured: one for the excluded paths and one for the rest. 
+
+To know what our custom Authorization manager is doing take a look:
+
+```kotlin
+@Component
+class JWTAuthorizationManager(private val jwtService: JWTService) : ReactiveAuthorizationManager<AuthorizationContext> {
+    override fun check(authentication: Mono<Authentication>?, context: AuthorizationContext?): Mono<AuthorizationDecision> = mono {
+        val exchange = context?.exchange ?: return@mono AuthorizationDecision(false)
+        val authHeader = exchange.request.headers.getFirst(HttpHeaders.AUTHORIZATION) ?: return@mono AuthorizationDecision(false)
+
+        if (!authHeader.startsWith("Bearer ")) {
+            return@mono AuthorizationDecision(false)
+        }
+
+        try {
+            val decodedJWT = jwtService.decodeAccessToken(authHeader) // checks expiration and signature
+            return@mono AuthorizationDecision(true)
+        } catch (e: Throwable) {
+            return@mono AuthorizationDecision(false)
+        }
+    }
+}
+``` 
+
+If you look at the code, you can see that we are not using the Authentication object for nothing, this is because we are not creating any session in the 
+server, looking at the [AuthorizationWebFilter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authorization/AuthorizationWebFilter.java#L46) 
+we can see that is using the security context to get the Authentication from there
+we want to authorize users checking the validity of the JWT that comes in every request (for example, if we need to do a role based authorization this role should come in the JWT). The validity for us is:
 
 1. If the token is expired. 
 2. If token was given by us (is signed with our signature). 
-
-We have to types of endpoints in our application: the public ones and the private ones. The public ones are the endpoints of the static files and `/login` endpoint, 
-and the private ones are the rest.
 
 ## Build project
 
