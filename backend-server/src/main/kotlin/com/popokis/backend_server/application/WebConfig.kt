@@ -41,10 +41,7 @@ class WebConfig : WebFluxConfigurer {
                           jwtAuthenticationFilter: AuthenticationWebFilter,
                           jwtServerSecurityContextRepository: ServerSecurityContextRepository): SecurityWebFilterChain {
         return http
-                .cors().disable()
                 .csrf().disable()
-                .httpBasic().disable()
-                .formLogin().disable()
                 .logout().disable()
                 .authorizeExchange()
                 .pathMatchers(*EXCLUDED_PATHS).permitAll()
