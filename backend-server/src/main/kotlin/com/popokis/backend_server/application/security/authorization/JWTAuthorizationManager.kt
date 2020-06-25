@@ -21,12 +21,7 @@ class JWTAuthorizationManager(private val jwtService: JWTService) : ReactiveAuth
         }
 
         try {
-            val decodedJWT = jwtService.decodeAccessToken(authHeader)
-
-            if (decodedJWT.subject.isNullOrBlank()) {
-                return@mono AuthorizationDecision(false)
-            }
-
+            jwtService.decodeAccessToken(authHeader)
             return@mono AuthorizationDecision(true)
         } catch (e: Throwable) {
             return@mono AuthorizationDecision(false)

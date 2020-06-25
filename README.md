@@ -393,9 +393,9 @@ fun configureSecurity(http: ServerHttpSecurity,
     return http
             .csrf().disable()
             .logout().disable()
-            .authorizeExchange() // Configures authorization
-            .pathMatchers(*EXCLUDED_PATHS).permitAll() // We allow requests to EXCLUDED_PATHS
-            .anyExchange().access(jwtAuthorizationManager) // For any request use our custom manager 
+            .authorizeExchange() // Configures authorization, now we can start adding matchers
+            .pathMatchers(*EXCLUDED_PATHS).permitAll() // Matcher that allow requests to EXCLUDED_PATHS
+            .anyExchange().access(jwtAuthorizationManager) // Matcher that adds an access rule manager for any request
             .and()
             .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
             .securityContextRepository(NoOpServerSecurityContextRepository.getInstance()) // we don't store sessions
@@ -404,10 +404,10 @@ fun configureSecurity(http: ServerHttpSecurity,
 ```
 
 With this configuration (see [WebConfig](https://github.com/soasada/kotlin-coroutines-webflux-security/blob/master/backend-server/src/main/kotlin/com/popokis/backend_server/application/WebConfig.kt)) we are adding an [AuthorizationWebFilter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authorization/AuthorizationWebFilter.java) 
-to our chain, the important thing here is that this filter is created with a [DelegatingReactiveAuthorizationManager](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authorization/DelegatingReactiveAuthorizationManager.java) that holds a 
-ReactiveAuthorizationManager for each path matcher we configured: one for the excluded paths and one for the rest. 
-
-To know what our custom Authorization manager is doing take a look:
+to our chain, the important thing here is that Spring Security creates it (see [ServerHttpSecurity](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java#L2587)) with a [DelegatingReactiveAuthorizationManager](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authorization/DelegatingReactiveAuthorizationManager.java) that holds a 
+ReactiveAuthorizationManager (the one who determines if the client has access or not) for each path matcher we configured: one for the excluded paths and one for the rest. 
+Each ReactiveAuthorizationManager is called when an enpoint match, so the `permitAll()` method is a ReactiveAuthorizationManager that always allow access and the 
+other is our custom ReactiveAuthorizationManager:
 
 ```kotlin
 @Component
@@ -432,11 +432,15 @@ class JWTAuthorizationManager(private val jwtService: JWTService) : ReactiveAuth
 
 If you look at the code, you can see that we are not using the Authentication object for nothing, this is because we are not creating any session in the 
 server, looking at the [AuthorizationWebFilter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authorization/AuthorizationWebFilter.java#L46) 
-we can see that is using the security context to get the Authentication from there
-we want to authorize users checking the validity of the JWT that comes in every request (for example, if we need to do a role based authorization this role should come in the JWT). The validity for us is:
+we can see that is using the security context to get the Authentication from there but we disabled sessions so there is no Authentication object, we have to authorize from 
+the request that is inside the AuthorizationContext.
+
+To authorize users, we are checking the validity of the JWT that comes in every request (for example, if we need to do a role based authorization this role should come in the JWT and we should check it here too). The validity for us is:
 
 1. If the token is expired. 
-2. If token was given by us (is signed with our signature). 
+2. If token was given by us (is signed with our signature).
+
+These checks are provided by our JWT library. 
 
 ## Build project
 
@@ -451,7 +455,3 @@ we want to authorize users checking the validity of the JWT that comes in every 
 ## MongoDB Index creation
 
 Index creation must be *explicitly* enabled, since Spring Data MongoDB version 3.0, to prevent undesired effects with collection lifecyle and performance impact. In our project when we add a new `@Document` class, if this document class has any index, this index should be created manual. See [002_create_customer_collection.js](/data/mongo/002_create_customer_collection.js) for more info.
-
-## Spring Security Webflux Authentication Flow
-
-`LoginServerWebExchangeMatcher` > `JWTConverter` > `UserDetailsRepositoryReactiveAuthenticationManager` > `JWTServerAuthenticationSuccessHandler`
