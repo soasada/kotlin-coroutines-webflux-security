@@ -17,6 +17,17 @@ const routes = [
         path: '/about',
         name: 'About',
         component: loadView('About')
+    },
+    {
+        path: '/customers',
+        name: 'Customers',
+        component: loadView('Customers'),
+        meta: {requiresAuth: true}
+    },
+    {
+        path: '/login',
+        name: 'Login',
+        component: loadView('Login')
     }
 ]
 
