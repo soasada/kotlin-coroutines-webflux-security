@@ -291,7 +291,7 @@ Looking closer to that filter we can see his dependency graph:
 
 Most of them are provided by default but at least one ([ReactiveAuthenticationManagerResolver](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManagerResolver.java)) must be 
 provided by the user. This interface resolves a [ReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManager.java) from a given context (ServerWebExchange in this case). 
-This manager determines if the given Authentication is valid or not, for us this Authentication object will contains the 
+This manager determines if the given Authentication is valid or not, for us an Authentication object contains the 
 username and password of the user that we want to authenticate. 
 
 But how we can do that? who is the responsible to convert the ServerWebExchange (incoming request) to an Authentication object? 
