@@ -141,7 +141,7 @@ Also, you could find the order of the filters here: [SecurityWebFiltersOrder](ht
 
 ### 3.1 Default Config 
 
-Spring Security Webflux configures the filter chain automatically for us in [WebFluxSecurityConfiguration](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/annotation/web/reactive/WebFluxSecurityConfiguration.java#L98), through [ServerHttpSecurity](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java) bean, 
+Spring Security Webflux configures the filter chain (see Figure 1) automatically for us in [WebFluxSecurityConfiguration](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/annotation/web/reactive/WebFluxSecurityConfiguration.java#L98), through [ServerHttpSecurity](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java) bean, 
 if we want something else we have to add this bean to our application context and explicitly configure the chain through it. 
 Here you have the default config (copy and pasted from Spring Security source code):
 
@@ -169,8 +169,10 @@ Here you have the default config (copy and pasted from Spring Security source co
         return result;
     }
 ```
-The method shown previously (`springSecurityFilterChain`) is only executed if Spring Security does not find a 
-SecurityWebFilterChain in the application context otherwise, it will load the SecurityWebFilterChain provided by us. For example, if our application has the following config (minimal one):
+This method (`springSecurityFilterChain`) is only executed if Spring Security does not find a 
+SecurityWebFilterChain in the application context otherwise, it will load the SecurityWebFilterChain provided by us. 
+Apparently, it's look simple but this method do a lot of things behind the scenes, in fact configure a whole 
+chain. For example, if our application has the following config:
 
 ```kotlin
 @Configuration
@@ -179,7 +181,9 @@ class MyWebfluxSecurityConfig
 ```
 
 ...and we don't have OAuth2 added as a dependency, Spring Security is going to add an http basic and form login authentication (with the famous login page)
-filters for all incoming requests. But wait..., where does that `ServerHttpSecurity` bean comes from? This bean is injected by Spring Security through [ServerHttpSecurityConfiguration](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/annotation/web/reactive/ServerHttpSecurityConfiguration.java#L122) config class, that 
+filters for all incoming requests besides, all others filters appearing in Figure 1 (headers, csrf, logout, etc). 
+
+But wait..., where does that `ServerHttpSecurity` bean comes from? This bean is injected by Spring Security through [ServerHttpSecurityConfiguration](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/annotation/web/reactive/ServerHttpSecurityConfiguration.java#L122) config class, that 
 is initialized as follows (copy and pasted from Spring Security source code):
 
 ```java
@@ -210,7 +214,7 @@ private ReactiveAuthenticationManager authenticationManager() {
 }
 ```
 
-...so apart from the http basic and form login, we get HTTP response headers [HeaderSpec](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java#L3269), 
+...so apart from the http basic and form login (and the others), here we can see that Spring Security also, adds the HTTP response headers [HeaderSpec](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java#L3269), 
 [LogoutWebFilter](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java#L3762) (with logout page) and 
 a [ReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManager.java) specifically [UserDetailsRepositoryReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/UserDetailsRepositoryReactiveAuthenticationManager.java) that extends 
 [AbstractUserDetailsReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/AbstractUserDetailsReactiveAuthenticationManager.java), if you have been working 
@@ -227,7 +231,7 @@ Here you can see the final minimal configuration:
 class MyWebfluxSecurityConfig {
     // Please don't use this on production, implement one by yourself
     @Bean
-    fun userDetailsService(passwordEncoder: PasswordEncoder): MapReactiveUserDetailsService {
+    fun userDetailsService(): MapReactiveUserDetailsService {
         return MapReactiveUserDetailsService(
             User
                 .withDefaultPasswordEncoder() // deprecated
@@ -242,12 +246,12 @@ class MyWebfluxSecurityConfig {
 
 ### 3.2 Explicit Configuration
 
-So far so good, we saw what is doing Spring Security for us also, we know which order has the filter chain in Spring Security Webflux projects 
-and what is the default configuration. At this point, we probably know that ServerHttpSecurity 
-bean is used to disable, enable or setting ours filters instead of the default ones. In this section, I will explain how we can explicitly configure our chain.
+So far so good, we saw what is doing Spring Security for us, also we know which order has the filter chain in Spring Security Webflux projects 
+and what is the default configuration. At this point, we could say that *with ServerHttpSecurity 
+bean we can disable, enable or setting ours filters instead of the default ones*. In this section, I will explain how we can explicitly configure our chain.
 
-Previously, I mention that simple adding a method to our configuration that adds the ServerHttpSecurity bean to our application 
-context we could configure whatever we want. Imagine, we want to remove the default authentication filters, we can do it with the following code:
+Previously, I mention that simply adding a method to our configuration that adds the ServerHttpSecurity bean to our application 
+context we can start configure whatever we want. Imagine, we want to remove the default authentication filters, we can do it with the following code:
 
 ```kotlin
 @Configuration
