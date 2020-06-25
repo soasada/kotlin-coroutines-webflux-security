@@ -355,13 +355,33 @@ to create our custom matcher.
     1. Our project is just an HTTP API and by default should be stateless, then we don't want to create a session so skip it. Done by [NoOpServerSecurityContextRepository](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/context/NoOpServerSecurityContextRepository.java).
     2. Execute our [JWTServerAuthenticationSuccessHandler](/backend-server/src/main/kotlin/com/popokis/backend_server/application/security/authentication/JWTServerAuthenticationSuccessHandler.kt) that generates an access and a refresh token and put them in the header of the response.
 
-Our [AuthenticationWebFilter](/backend-server/src/main/kotlin/com/popokis/backend_server/application/WebConfig.kt#L70) follows these steps. At this point we have been customized our authentication flow, how should we authorize users to use our APIs?
+We are following these steps customizing [AuthenticationWebFilter](/backend-server/src/main/kotlin/com/popokis/backend_server/application/WebConfig.kt#L70), and our ServerHttpSecurity configuration looks like:
+
+```kotlin
+@Bean
+fun configureSecurity(http: ServerHttpSecurity, jwtAuthenticationFilter: AuthenticationWebFilter): SecurityWebFilterChain {
+    return http
+            .csrf().disable()
+            .logout().disable()
+            .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+            .build()
+}
+```
+ 
+At this point we have been customized our authentication flow, how should we authorize users to use our APIs?
 
 ### 3.4 Authorization
 
-Talk about roles in Authentication object.
-(where 
-we check for every authenticated path the access token signature coming in every ServerWebExchange)
+Spring Security could be used to give permission to our clients for use certain endpoints of our API, these permissions could be role based, scope based or both and are called [GrantedAuthority](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/core/GrantedAuthority.java). 
+We give permissions in the authentication process depending of the user we give one or the other. **(I will skip this part but is a WIP)**
+
+For now, we want to authorize users checking the validity of the JWT that comes in every request (for example, if we need to do a role based authorization this role should come in the JWT). The validity for us is:
+
+1. If the token is expired. 
+2. If token was given by us (is signed with our signature). 
+
+We have to types of endpoints in our application: the public ones and the private ones. The public ones are the endpoints of the static files and `/login` endpoint, 
+and the private ones are the rest.
 
 ## Build project
 
