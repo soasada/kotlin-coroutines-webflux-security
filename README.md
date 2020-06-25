@@ -334,26 +334,28 @@ protected Mono<Void> onAuthenticationSuccess(Authentication authentication, WebF
 }
 ```
 
-1. Checks if the request match a given pattern, in our case we want to authenticate users through a POST to `/login` endpoint, 
-this is done by [ServerWebExchangeMatcher](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/util/matcher/ServerWebExchangeMatcher.java). 
-If success, continue with step 2 if not, skip this filter and continue the chain. 
-2. Converts the request to an unauthenticated Authentication object, in our case we get from the body a JSON with `username` and 
-`password` attributes. This is done by [ServerAuthenticationConverter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/ServerAuthenticationConverter.java). 
+1. Checks if the request match a given pattern. This is done by [ServerWebExchangeMatcher](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/util/matcher/ServerWebExchangeMatcher.java). 
+If success, continue with step 2, if not skip this filter and continue the chain. 
+2. Converts the request to an unauthenticated Authentication object. This is done by [ServerAuthenticationConverter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/ServerAuthenticationConverter.java). 
 If the converter returns an empty Mono, continue the chain otherwise go step 3.
-3. Try to verify the Authentication object provided by step 2, in our case we get the principal (username) and the credentials 
-(password) and: 
-    1. Look into the database if the user exists, done by [ReactiveUserDetailsService](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/core/userdetails/ReactiveUserDetailsService.java), if exists go to step 3.2
-    2. If exists, check if the passwords match
+3. Verify the Authentication object provided by step 2. This step is done by [ReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManager.java). If the verification is not successful we can throw an exception, otherwise go step 4. 
+4. On authentication success:
+    1. Save the Authentication object in the security context (session). By [ServerSecurityContextRepository](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/context/ServerSecurityContextRepository.java).
+    2. Execute [ServerAuthenticationSuccessHandler](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/ServerAuthenticationSuccessHandler.java).
 
-Spring Security Webflux default authentication filters are (by order in the chain):
+This is the general algorithm that AuthenticationWebFilter follows, and in which we can customize all steps. In our case, the steps are:
 
-1. Http basic, see [ServerHttpSecurity:3038](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java#L3038)
-2. Form login, see [ServerHttpSecurity:3219](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java#L3219)
-3. OAuth2 family (in order to use this family of filters you need the `spring-boot-starter-oauth2-resource-server` dependency), see [ServerHttpSecurity:1179](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java#L1179)
-4. Anonymous family 
+1. We want to authenticate users through a POST to `/login` endpoint, our matcher looks at the request and see if this pattern match. We can use the factory method `pathMatchers()` that [ServerWebExchangeMatchers](/backend-server/src/main/kotlin/com/popokis/backend_server/application/WebConfig.kt#L71) provides 
+to create our custom matcher. 
+2. Our converter gets from the body a JSON with `username` and `password` attributes and creates an unauthenticated Authentication object with them. Done by [JWTConverter](/backend-server/src/main/kotlin/com/popokis/backend_server/application/security/authentication/JWTConverter.kt). 
+3. [AbstractUserDetailsReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/AbstractUserDetailsReactiveAuthenticationManager.java#L98) gets the principal (username) and the credentials (password) and: 
+4. [AbstractUserDetailsReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/AbstractUserDetailsReactiveAuthenticationManager.java#L100) looks into the database if the user exist with [CustomerReactiveUserDetailsService](/backend-server/src/main/kotlin/com/popokis/backend_server/application/security/authentication/CustomerReactiveUserDetailsService.kt), if exists go to step 5, otherwise throw Unauthorized error. 
+5. [AbstractUserDetailsReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/AbstractUserDetailsReactiveAuthenticationManager.java#L103) checks if passwords match, if so authentication success, if not throw Unauthorized error.
+4. On authentication success:
+    1. Our project is just an HTTP API and by default should be stateless, then we don't want to create a session so skip it. Done by [NoOpServerSecurityContextRepository](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/context/NoOpServerSecurityContextRepository.java).
+    2. Execute our ServerAuthenticationSuccessHandler that generates an access and a refresh token and put them in the header of the response.
 
-(where we get the username 
-and password, validate against a database/service and if success we give the user an access and refresh token)
+Our [AuthenticationWebFilter](/backend-server/src/main/kotlin/com/popokis/backend_server/application/WebConfig.kt#L70) follows these steps. At this point we have been customized our authentication flow, how should we authorize users to use our APIs?
 
 ### 3.4 Authorization
 

@@ -58,6 +58,15 @@ internal class LoginIntegrationTest : AppIntegrationTest() {
     }
 
     @Test
+    fun `Given a customer when tries to login with correct email but incorrect password then receives BAD REQUEST error`() {
+        webTestClient
+                .post().uri("/login")
+                .bodyValue(LoginRequest(firstUsername, "invalidpassword"))
+                .exchange()
+                .expectStatus().isUnauthorized
+    }
+
+    @Test
     fun `Given a customer when tries to login with incorrect JSON request then receives BAD REQUEST error`() {
         val badRequest = object {
             val invalidUsername = "invalid@asd.com"
