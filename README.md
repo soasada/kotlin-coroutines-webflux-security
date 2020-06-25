@@ -247,11 +247,11 @@ class MyWebfluxSecurityConfig {
 ### 3.2 Explicit Configuration
 
 So far so good, we saw what is doing Spring Security for us, also we know which order has the filter chain in Spring Security Webflux projects 
-and what is the default configuration. At this point, we could say that *with ServerHttpSecurity 
-bean we can disable, enable or setting ours filters instead of the default ones*. In this section, I will explain how we can explicitly configure our chain.
+and what is the default configuration. At this point, we could say that **with ServerHttpSecurity 
+bean we can disable, enable or setting ours filters instead of the default ones**. In this section, I will explain how we can explicitly configure our chain.
 
 Previously, I mention that simply adding a method to our configuration that adds the ServerHttpSecurity bean to our application 
-context we can start configure whatever we want. Imagine, we want to remove the default authentication filters, we can do it with the following code:
+context we can start configure whatever we want. Imagine for example, we want to remove the default authentication filters, we can do it with the following code:
 
 ```kotlin
 @Configuration
@@ -262,33 +262,20 @@ class MyWebfluxSecurityConfig {
         see section 3.1 for knowing where comes from.
     */
     @Bean
-    fun springWebFilterChain(http: ServerHttpSecurity) = http
-        .httpBasic().disable()
-        .formLogin().disable()
-        .build()
+    fun springWebFilterChain(http: ServerHttpSecurity) = http.build()
 }
 ```
 
+Doing that, we add our custom SecurityWebFilterChain to the application context, then Spring Security doesn't load the default config. 
+We are getting the SecurityWebFilterChain injected by Spring security that only has the authentication manager, logout page and 
+security header filters without any authentication or authorization filters.
+
+**Please don't do this on production is only for educational purpose**
+
 Now if a client makes an HTTP request to our API is gonna be able to do it without problems, we 
-have no security at all. As we saw in 3.1 section, the http basic and the login form authentication filters were the only
-ones configured by Spring Security but, we disabled them = no authentication. 
+have no security at all. See 3.1 section if you want to remember the default config.
 
-Also, Spring Security configured by default no role based (or token based) authorization, to refresh your memory:
-
-```java
-in WebFluxSecurityConfiguration.java
-...
-http
-    .authorizeExchange() // authorization config starts
-        .anyExchange() // disables authorization
-        .authenticated(); // Spring Security will authorize only authenticated users
-...
-``` 
- 
-...which means Spring Security will authorize only authenticated users but, remember we disabled authentication! then, we by pass 
-the authorization filter.
-
-Let's add some authentication and authorization to our API!
+Let's add some security to our API!
 
 ### 3.3 Authentication
 
