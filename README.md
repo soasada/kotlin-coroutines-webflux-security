@@ -285,7 +285,7 @@ This type is used to represent the entity (user or service) we want to authentic
 Spring Security Webflux use the [AuthenticationWebFilter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/AuthenticationWebFilter.java) for this purpose and 
 it could be configured to do whatever authentication logic we want.
 
-Looking closer to that filter we can see his dependency graph:
+Looking closer to that filter we can see the dependencies that configure it:
 
 ![AuthenticationWebFilter Dependency Graph](/diagrams/authentication_web_filter.png?raw=true "AuthenticationWebFilter Dependency Graph")
 

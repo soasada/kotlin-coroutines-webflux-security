@@ -10,6 +10,7 @@ import org.springframework.http.codec.json.AbstractJackson2Decoder
 import org.springframework.http.codec.json.Jackson2JsonDecoder
 import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager
+import org.springframework.security.authorization.ReactiveAuthorizationManager
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder
 import org.springframework.security.config.web.server.ServerHttpSecurity
@@ -19,8 +20,8 @@ import org.springframework.security.web.server.SecurityWebFilterChain
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter
 import org.springframework.security.web.server.authentication.ServerAuthenticationConverter
 import org.springframework.security.web.server.authentication.ServerAuthenticationSuccessHandler
+import org.springframework.security.web.server.authorization.AuthorizationContext
 import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository
-import org.springframework.security.web.server.context.ServerSecurityContextRepository
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers
 import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.config.WebFluxConfigurer
@@ -39,16 +40,15 @@ class WebConfig : WebFluxConfigurer {
     @Bean
     fun configureSecurity(http: ServerHttpSecurity,
                           jwtAuthenticationFilter: AuthenticationWebFilter,
-                          jwtServerSecurityContextRepository: ServerSecurityContextRepository): SecurityWebFilterChain {
+                          jwtAuthorizationManager: ReactiveAuthorizationManager<AuthorizationContext>): SecurityWebFilterChain {
         return http
                 .csrf().disable()
                 .logout().disable()
                 .authorizeExchange()
                 .pathMatchers(*EXCLUDED_PATHS).permitAll()
-                .anyExchange().authenticated()
+                .anyExchange().access(jwtAuthorizationManager)
                 .and()
                 .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
-                .securityContextRepository(jwtServerSecurityContextRepository)
                 .build()
     }
 
