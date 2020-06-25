@@ -270,12 +270,12 @@ Doing that, we add our custom SecurityWebFilterChain to the application context,
 We are getting the SecurityWebFilterChain injected by Spring security that only has the authentication manager, logout page and 
 security header filters without any authentication or authorization filters.
 
-**Please don't do this on production is only for educational purpose**
+:warning: **Please don't do this on production is only for educational purpose**
 
-Now if a client makes an HTTP request to our API is gonna be able to do it without problems, we 
+If a client makes an HTTP request to our API is gonna be able to do it without problems, we 
 have no security at all. See 3.1 section if you want to remember the default config.
 
-Let's add some security to our API!
+Now you know how to explicit configure the chain, let's add some security to our API!
 
 ### 3.3 Authentication
 
