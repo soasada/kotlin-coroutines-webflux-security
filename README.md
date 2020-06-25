@@ -279,6 +279,16 @@ Now you know how to explicit configure the chain, let's add some security to our
 
 ### 3.3 Authentication
 
+Spring Security supports authentication for incoming requests and represents it with [Authentication](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/core/Authentication.java) type. 
+This type is used to represent the entity (user or service) we want to authenticate (verify that the entity is who it claims to be).
+
+Spring Security Webflux use the [AuthenticationWebFilter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/AuthenticationWebFilter.java) for this purpose and 
+it could be configured to do whatever authentication logic we want.
+
+Looking closer to that filter we can see his dependency graph:
+
+![AuthenticationWebFilter Dependency Graph](/diagrams/authentication_web_filter.png?raw=true "AuthenticationWebFilter Dependency Graph")
+
 Spring Security Webflux default authentication filters are (by order in the chain):
 
 1. Http basic, see [ServerHttpSecurity:3038](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java#L3038)
