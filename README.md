@@ -279,7 +279,7 @@ Now you know how to explicit configure the chain, let's add some security to our
 
 ### 3.3 Authentication
 
-Spring Security supports authentication for incoming requests and represents it with [Authentication](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/core/Authentication.java) type. 
+Spring Security supports authentication for incoming requests, and represents it with [Authentication](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/core/Authentication.java) type. 
 This type is used to represent the entity (user or service) we want to authenticate (verify that the entity is who it claims to be).
 
 Spring Security Webflux use the [AuthenticationWebFilter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/AuthenticationWebFilter.java) for this purpose and 
@@ -288,6 +288,51 @@ it could be configured to do whatever authentication logic we want.
 Looking closer to that filter we can see his dependency graph:
 
 ![AuthenticationWebFilter Dependency Graph](/diagrams/authentication_web_filter.png?raw=true "AuthenticationWebFilter Dependency Graph")
+
+Most of them are provided by default but at least one ([ReactiveAuthenticationManagerResolver](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManagerResolver.java)) must be 
+provided by the user. This interface resolves a [ReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManager.java) from a given context (ServerWebExchange in this case). 
+This manager determines if the given Authentication is valid or not, for us this Authentication object will contains the 
+username and password of the user that we want to authenticate. 
+
+But how we can do that? who is the responsible to convert the ServerWebExchange (incoming request) to an Authentication object? 
+
+To know that we must know before which path a ServerWebExchange follows when arrives to the AuthenticationWebFilter. This could 
+be seen in the source code of the `filter()` method of AuthenticationWebFilter:
+
+```java
+@Override
+public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+    return this.requiresAuthenticationMatcher.matches(exchange)
+        .filter( matchResult -> matchResult.isMatch())
+        .flatMap( matchResult -> this.authenticationConverter.convert(exchange))
+        .switchIfEmpty(chain.filter(exchange).then(Mono.empty()))
+        .flatMap( token -> authenticate(exchange, chain, token))
+        .onErrorResume(AuthenticationException.class, e -> this.authenticationFailureHandler
+            .onAuthenticationFailure(new WebFilterExchange(exchange, chain), e));
+}
+
+private Mono<Void> authenticate(ServerWebExchange exchange, WebFilterChain chain, Authentication token) {
+    return this.authenticationManagerResolver.resolve(exchange)
+        .flatMap(authenticationManager -> authenticationManager.authenticate(token))
+        .switchIfEmpty(Mono.defer(() -> Mono.error(new IllegalStateException("No provider found for " + token.getClass()))))
+        .flatMap(authentication -> onAuthenticationSuccess(authentication, new WebFilterExchange(exchange, chain)))
+        .doOnError(AuthenticationException.class, e -> {
+            if (logger.isDebugEnabled()) {
+                logger.debug("Authentication failed: " + e.getMessage());
+            }
+        });
+}
+
+protected Mono<Void> onAuthenticationSuccess(Authentication authentication, WebFilterExchange webFilterExchange) {
+    ServerWebExchange exchange = webFilterExchange.getExchange();
+    SecurityContextImpl securityContext = new SecurityContextImpl();
+    securityContext.setAuthentication(authentication);
+    return this.securityContextRepository.save(exchange, securityContext)
+        .then(this.authenticationSuccessHandler
+            .onAuthenticationSuccess(webFilterExchange, authentication))
+        .subscriberContext(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(securityContext)));
+}
+```
 
 Spring Security Webflux default authentication filters are (by order in the chain):
 
