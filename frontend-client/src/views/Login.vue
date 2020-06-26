@@ -13,6 +13,9 @@
                            v-model="model.password">
                 </div>
             </div>
+            <div class="alert-danger" v-if="signInError">
+                {{signInErrorMsg}}
+            </div>
             <button type="submit" class="btn btn-success">Sign In</button>
         </form>
     </div>

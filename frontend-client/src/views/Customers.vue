@@ -1,5 +1,16 @@
 <template>
-  <div class="customers">
-    <h1>This is an about page</h1>
-  </div>
+    <div class="customers">
+        <CustomerList></CustomerList>
+    </div>
 </template>
+
+<script>
+    import CustomerList from '@/components/CustomerList';
+
+    export default {
+        name: 'Customers',
+        components: {
+            CustomerList
+        }
+    }
+</script>

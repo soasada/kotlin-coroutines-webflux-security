@@ -37,11 +37,17 @@ export default new Vuex.Store({
                     } else {
                         router.push('home');
                     }
+                })
+                .catch(error => {
+                    commit('SET_TOKEN', null);
+                    commit('SET_SIGN_IN_ERROR', true);
+                    commit('SET_SIGN_IN_ERROR_MSG', error);
+                    sessionStorage.removeItem('token');
                 });
         },
-        logout({commit}) {
+        signOut({commit}) {
             commit('SET_TOKEN', null);
-            sessionStorage.removeItem('accessToken');
+            sessionStorage.removeItem('token');
         }
     },
     modules: {},

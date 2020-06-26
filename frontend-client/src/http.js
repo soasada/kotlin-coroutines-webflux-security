@@ -1,13 +1,13 @@
 export default {
-    get(resource) {
-        return this.execute('GET', resource);
+    get(resource, secure = false) {
+        return this.execute('GET', resource, secure);
     },
 
-    post(resource, data) {
-        return this.execute('POST', resource, data);
+    post(resource, data, secure = false) {
+        return this.execute('POST', resource, secure, data);
     },
 
-    execute(method, resource, data = {}) {
+    execute(method, resource, secure, data = {}) {
         if (Object.keys(data).length === 0 && data.constructor === Object) {
             return fetch(resource, {
                 method: method,
@@ -15,11 +15,19 @@ export default {
                 cache: 'no-cache',
                 credentials: 'same-origin',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + sessionStorage.getItem('token')
                 },
                 redirect: 'follow',
                 referrerPolicy: 'no-referrer'
-            });
+            })
+                .then(response => {
+                    if (response.status !== 200) {
+                        throw new Error(response.status);
+                    } else {
+                        return response;
+                    }
+                });
         } else {
             return fetch(resource, {
                 method: method,
@@ -32,6 +40,12 @@ export default {
                 redirect: 'follow',
                 referrerPolicy: 'no-referrer',
                 body: JSON.stringify(data)
+            }).then(response => {
+                if (response.status !== 200) {
+                    throw new Error(response.status);
+                } else {
+                    return response;
+                }
             });
         }
     }
