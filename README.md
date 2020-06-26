@@ -289,10 +289,27 @@ Looking closer to that filter we can see the dependencies that configure it:
 
 ![AuthenticationWebFilter Dependency Graph](/diagrams/authentication_web_filter.png?raw=true "AuthenticationWebFilter Dependency Graph")
 
-Most of them are provided by default but at least one ([ReactiveAuthenticationManagerResolver](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManagerResolver.java)) must be 
-provided by the user. This interface resolves a [ReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManager.java) from a given context (ServerWebExchange in this case). 
-This manager determines if the given Authentication is valid or not, for us an Authentication object contains the 
-username and password of the user that we want to authenticate. 
+Most of them are provided by default and here you could see the list:
+
+```java
+private final ReactiveAuthenticationManagerResolver<ServerWebExchange> authenticationManagerResolver;
+
+private ServerAuthenticationSuccessHandler authenticationSuccessHandler = new WebFilterChainServerAuthenticationSuccessHandler();
+
+private ServerAuthenticationConverter authenticationConverter = new ServerHttpBasicAuthenticationConverter();
+
+private ServerAuthenticationFailureHandler authenticationFailureHandler = new ServerAuthenticationEntryPointFailureHandler(new HttpBasicServerAuthenticationEntryPoint());
+
+private ServerSecurityContextRepository securityContextRepository = NoOpServerSecurityContextRepository.getInstance(); // No session
+
+private ServerWebExchangeMatcher requiresAuthenticationMatcher = ServerWebExchangeMatchers.anyExchange();
+```
+
+...by default an `AuthenticationWebFilter` would behave as a Http Basic filter without session. The only dependency that must be 
+provided by the user is ([ReactiveAuthenticationManagerResolver](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManagerResolver.java)). 
+This interface resolves a [ReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManager.java) from a given context (ServerWebExchange in this case). 
+**This manager determines if the given Authentication is valid or not, for us an Authentication object contains the 
+username and password of the user that we want to authenticate.** 
 
 But how we can do that? who is the responsible to convert the ServerWebExchange (incoming request) to an Authentication object? 
 
@@ -334,26 +351,29 @@ protected Mono<Void> onAuthenticationSuccess(Authentication authentication, WebF
 }
 ```
 
-1. Checks if the request match a given pattern. This is done by [ServerWebExchangeMatcher](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/util/matcher/ServerWebExchangeMatcher.java). 
+1. Checks if the request match a given pattern (any by default). This is done by [ServerWebExchangeMatcher](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/util/matcher/ServerWebExchangeMatcher.java). 
 If success, continue with step 2, if not skip this filter and continue the chain. 
-2. Converts the request to an unauthenticated Authentication object. This is done by [ServerAuthenticationConverter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/ServerAuthenticationConverter.java). 
+2. Converts the request to an unauthenticated Authentication object (from the Authorization header by default). This is done by [ServerAuthenticationConverter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/ServerAuthenticationConverter.java). 
 If the converter returns an empty Mono, continue the chain otherwise go step 3.
-3. Verify the Authentication object provided by step 2. This step is done by [ReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManager.java). If the verification is not successful we can throw an exception, otherwise go step 4. 
+3. Verify the Authentication object provided by step 2. This step is done by [ReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManager.java). If the verification is not successful (an AuthenticationException occurs) execute [ServerAuthenticationFailureHandler](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/ServerAuthenticationFailureHandler.java) (prompts a user for HTTP Basic authentication by default), otherwise go step 4. 
 4. On authentication success:
-    1. Save the Authentication object in the security context (session). By [ServerSecurityContextRepository](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/context/ServerSecurityContextRepository.java).
-    2. Execute [ServerAuthenticationSuccessHandler](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/ServerAuthenticationSuccessHandler.java).
+    1. Save the Authentication object in the security context (session) (nothing is saved by default). By [ServerSecurityContextRepository](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/context/ServerSecurityContextRepository.java).
+    2. Execute [ServerAuthenticationSuccessHandler](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/ServerAuthenticationSuccessHandler.java) (continue the chain by default).
 
-This is the general algorithm that AuthenticationWebFilter follows, and in which we can customize all steps. In our case, the steps are:
+This is the general algorithm that AuthenticationWebFilter follows, and in which we can customize all steps or keep the default ones that are handy for us. 
+In our case, the steps that we are gonna replace are:
 
 1. We want to authenticate users through a POST to `/login` endpoint, our matcher looks at the request and see if this pattern match. We can use the factory method `pathMatchers()` that [ServerWebExchangeMatchers](/backend-server/src/main/kotlin/com/popokis/backend_server/application/WebConfig.kt#L71) provides 
 to create our custom matcher. 
 2. Our converter gets from the body a JSON with `username` and `password` attributes and creates an unauthenticated Authentication object with them. Done by [JWTConverter](/backend-server/src/main/kotlin/com/popokis/backend_server/application/security/authentication/JWTConverter.kt). 
 3. [AbstractUserDetailsReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/AbstractUserDetailsReactiveAuthenticationManager.java#L98) gets the principal (username) and the credentials (password) from the Authentication object created in step 2 and: 
-    1. [AbstractUserDetailsReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/AbstractUserDetailsReactiveAuthenticationManager.java#L100) looks into the database if the user exist with [CustomerReactiveUserDetailsService](/backend-server/src/main/kotlin/com/popokis/backend_server/application/security/authentication/CustomerReactiveUserDetailsService.kt), if exists go to step 3.ii, otherwise throw Unauthorized error. 
-    2. [AbstractUserDetailsReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/AbstractUserDetailsReactiveAuthenticationManager.java#L103) checks if passwords match, if so authentication success, if not throw Unauthorized error.
+    1. [AbstractUserDetailsReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/AbstractUserDetailsReactiveAuthenticationManager.java#L100) looks into the database if the user exist with [CustomerReactiveUserDetailsService](/backend-server/src/main/kotlin/com/popokis/backend_server/application/security/authentication/CustomerReactiveUserDetailsService.kt), if exists go to step 3.ii, otherwise throw BadCredentialsException and executes ServerAuthenticationFailureHandler (step 5). 
+    2. [AbstractUserDetailsReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/AbstractUserDetailsReactiveAuthenticationManager.java#L103) checks if passwords match, if so authentication success, if not throw BadCredentialsException and executes ServerAuthenticationFailureHandler (step 5).
 4. On authentication success:
     1. Our project is just an HTTP API and by default should be stateless, then we don't want to create a session so skip it. Done by [NoOpServerSecurityContextRepository](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/context/NoOpServerSecurityContextRepository.java).
     2. Execute our [JWTServerAuthenticationSuccessHandler](/backend-server/src/main/kotlin/com/popokis/backend_server/application/security/authentication/JWTServerAuthenticationSuccessHandler.kt) that generates an access and a refresh token and put them in the header of the response.
+5. On authentication error:
+    1. Return unauthorized error. Done by [JWTServerAuthenticationFailureHandler](/backend-server/src/main/kotlin/com/popokis/backend_server/application/JWTServerAuthenticationFailureHandler.kt).
 
 We are following these steps customizing [AuthenticationWebFilter](/backend-server/src/main/kotlin/com/popokis/backend_server/application/WebConfig.kt#L70), and our ServerHttpSecurity configuration looks like:
 
@@ -455,3 +475,13 @@ These checks are provided by our JWT library.
 ## MongoDB Index creation
 
 Index creation must be *explicitly* enabled, since Spring Data MongoDB version 3.0, to prevent undesired effects with collection lifecyle and performance impact. In our project when we add a new `@Document` class, if this document class has any index, this index should be created manual. See [002_create_customer_collection.js](/data/mongo/002_create_customer_collection.js) for more info.
+
+## Run hot reloading frontend
+
+:warning: Before running the hot reloading frontend you have to build the frontend:
+
+`mvn -U clean install -pl :frontend-client`
+
+Then:
+
+`bash frontend-client/npm --prefix frontend-client run serve`

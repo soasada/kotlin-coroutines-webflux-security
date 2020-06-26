@@ -19,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.server.SecurityWebFilterChain
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter
 import org.springframework.security.web.server.authentication.ServerAuthenticationConverter
+import org.springframework.security.web.server.authentication.ServerAuthenticationFailureHandler
 import org.springframework.security.web.server.authentication.ServerAuthenticationSuccessHandler
 import org.springframework.security.web.server.authorization.AuthorizationContext
 import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository
@@ -67,11 +68,13 @@ class WebConfig : WebFluxConfigurer {
     @Bean
     fun authenticationWebFilter(reactiveAuthenticationManager: ReactiveAuthenticationManager,
                                 jwtConverter: ServerAuthenticationConverter,
-                                serverAuthenticationSuccessHandler: ServerAuthenticationSuccessHandler): AuthenticationWebFilter {
+                                serverAuthenticationSuccessHandler: ServerAuthenticationSuccessHandler,
+                                jwtServerAuthenticationFailureHandler: ServerAuthenticationFailureHandler): AuthenticationWebFilter {
         val authenticationWebFilter = AuthenticationWebFilter(reactiveAuthenticationManager)
         authenticationWebFilter.setRequiresAuthenticationMatcher { ServerWebExchangeMatchers.pathMatchers(HttpMethod.POST, "/login").matches(it) }
         authenticationWebFilter.setServerAuthenticationConverter(jwtConverter)
         authenticationWebFilter.setAuthenticationSuccessHandler(serverAuthenticationSuccessHandler)
+        authenticationWebFilter.setAuthenticationFailureHandler(jwtServerAuthenticationFailureHandler)
         authenticationWebFilter.setSecurityContextRepository(NoOpServerSecurityContextRepository.getInstance())
         return authenticationWebFilter
     }

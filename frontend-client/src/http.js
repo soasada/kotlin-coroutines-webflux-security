@@ -3,11 +3,15 @@ export default {
         return this.execute('GET', resource);
     },
 
+    post(resource, data) {
+        return this.execute('POST', resource, data);
+    },
+
     execute(method, resource, data = {}) {
         if (Object.keys(data).length === 0 && data.constructor === Object) {
-            return fetch('/v1' + resource, {
+            return fetch(resource, {
                 method: method,
-                mode: 'cors',
+                mode: 'same-origin',
                 cache: 'no-cache',
                 credentials: 'same-origin',
                 headers: {
@@ -17,9 +21,9 @@ export default {
                 referrerPolicy: 'no-referrer'
             });
         } else {
-            return fetch('/v1' + resource, {
+            return fetch(resource, {
                 method: method,
-                mode: 'cors',
+                mode: 'same-origin',
                 cache: 'no-cache',
                 credentials: 'same-origin',
                 headers: {

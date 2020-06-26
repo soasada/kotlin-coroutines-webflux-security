@@ -1,6 +1,7 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 import jwt from 'jsonwebtoken';
+import http from '@/http';
 
 Vue.use(Vuex);
 
@@ -23,30 +24,20 @@ export default new Vuex.Store({
     },
     actions: {
         signIn({commit}, {username, password, router, route}) {
-            fetch('http://localhost:8087/login', {
-                method: 'POST',
-                mode: 'cors',
-                cache: 'no-cache',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                redirect: 'follow',
-                referrerPolicy: 'no-referrer',
-                body: JSON.stringify({username: username, password: password})
-            }).then(response => {
-                console.log(response.headers);
-                const token = response.data.token;
-                commit('SET_TOKEN', token);
-                commit('SET_SIGN_IN_ERROR', false);
-                commit('SET_SIGN_IN_ERROR_MSG', '');
-                sessionStorage.setItem('token', token);
-                if (route.query.redirect) {
-                    router.push(route.query.redirect);
-                } else {
-                    router.push('home');
-                }
-            });
+            http.post('/login', {username: username, password: password})
+                .then(response => {
+                    console.log('REFRESH: ' + response.headers.get('jwt-refresh-token'));
+                    const token = response.headers.get('authorization');
+                    commit('SET_TOKEN', token);
+                    commit('SET_SIGN_IN_ERROR', false);
+                    commit('SET_SIGN_IN_ERROR_MSG', '');
+                    sessionStorage.setItem('token', token);
+                    if (route.query.redirect) {
+                        router.push(route.query.redirect);
+                    } else {
+                        router.push('home');
+                    }
+                });
         },
         logout({commit}) {
             commit('SET_TOKEN', null);

@@ -1,10 +1,12 @@
 module.exports = {
     devServer: {
         proxy: {
-            '/v1': {
+            '^/': {
                 target: 'http://localhost:8087',
                 ws: true,
-                changeOrigin: true
+                changeOrigin: true,
+                secure: false,
+                logLevel: 'debug'
             }
         }
     },
