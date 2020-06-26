@@ -14,7 +14,7 @@ import reactor.core.publisher.Mono
 class JWTServerAuthenticationFailureHandler : ServerAuthenticationFailureHandler {
     override fun onAuthenticationFailure(webFilterExchange: WebFilterExchange?, exception: AuthenticationException?): Mono<Void> = mono {
         val exchange = webFilterExchange?.exchange ?: throw HttpExceptionFactory.unauthorized()
-        exchange.response.setStatusCode(HttpStatus.UNAUTHORIZED)
+        exchange.response.statusCode = HttpStatus.UNAUTHORIZED
         exchange.response.setComplete().awaitFirstOrNull()
     }
 }

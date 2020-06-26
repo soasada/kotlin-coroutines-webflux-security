@@ -1,11 +1,11 @@
 # Spring Webflux + Spring Security + Kotlin Coroutines
 
-Hi! If you are one of those people like me that, are trying to learn Spring Webflux with Kotlin and Spring Security 
-this repository is for you. As you probably already know, the documentation about using Spring Security with Spring Webflux 
+Hi! If you are one of those people like me, that are trying to learn Spring Webflux with Kotlin and want to add Spring Security 
+to a project, this repository is for you. As you probably already know, the documentation about using Spring Security with Spring Webflux 
 if very scarce and if we add Kotlin on top of that, is even more. This lack of documentation has encouraged me to do this repository, 
 I will try to explain how to make a custom security configuration based in JWT with Kotlin coroutines with a "close-to-real-world" minimal example.
 
-There are few resources over the internet explaining this topic, but most of them have incomplete or incorrect information, 
+There are few resources over the internet explaining this topic, but most of them have incomplete or incorrect information. 
 I think that this is for two reasons: a poor documentation and young technology. So even trying to do it perfectly, I'm pretty sure 
 I made lot of mistakes, if you find them (in the code or in the README), please make a pull request. Together we could make a better documentation for everyone.
 
@@ -146,28 +146,28 @@ if we want something else we have to add this bean to our application context an
 Here you have the default config (copy and pasted from Spring Security source code):
 
 ```java
-    /**
-     * The default {@link ServerHttpSecurity} configuration.
-     * @param http
-     * @return
-     */
-    private SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+/**
+ * The default {@link ServerHttpSecurity} configuration.
+ * @param http
+ * @return
+ */
+private SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+    http
+        .authorizeExchange() // this add authorization
+            .anyExchange() // for any request
+            .authenticated(); // Spring Security will authorize only authenticated users
+    
+    if (isOAuth2Present && OAuth2ClasspathGuard.shouldConfigure(this.context)) {
+        OAuth2ClasspathGuard.configure(this.context, http);
+    } else {
         http
-            .authorizeExchange() // this add authorization
-                .anyExchange() // this method disables role based authorization
-                .authenticated(); // Spring Security will authorize only authenticated users
-        
-        if (isOAuth2Present && OAuth2ClasspathGuard.shouldConfigure(this.context)) {
-            OAuth2ClasspathGuard.configure(this.context, http);
-        } else {
-            http
-                .httpBasic().and()
-                .formLogin();
-        }
-        
-        SecurityWebFilterChain result = http.build();
-        return result;
+            .httpBasic().and()
+            .formLogin();
     }
+    
+    SecurityWebFilterChain result = http.build();
+    return result;
+}
 ```
 This method (`springSecurityFilterChain`) is only executed if Spring Security does not find a 
 SecurityWebFilterChain in the application context otherwise, it will load the SecurityWebFilterChain provided by us. 
@@ -250,7 +250,7 @@ So far so good, we saw what is doing Spring Security for us, also we know which 
 and what is the default configuration. At this point, we could say that **with ServerHttpSecurity 
 bean we can disable, enable or setting ours filters instead of the default ones**. In this section, I will explain how we can explicitly configure our chain.
 
-Previously, I mention that simply adding a method to our configuration that adds the ServerHttpSecurity bean to our application 
+Previously, I mentioned that simply adding a method to our configuration that adds the ServerHttpSecurity bean to our application 
 context we can start configure whatever we want. Imagine for example, we want to remove the default authentication filters, we can do it with the following code:
 
 ```kotlin
@@ -266,7 +266,7 @@ class MyWebfluxSecurityConfig {
 }
 ```
 
-Doing that, we add our custom SecurityWebFilterChain to the application context, then Spring Security doesn't load the default config. 
+Doing that, we add our custom SecurityWebFilterChain to the application context, then Spring Security doesn't load the default one. 
 We are getting the SecurityWebFilterChain injected by Spring security that only has the authentication manager, logout page and 
 security header filters without any authentication or authorization filters.
 
@@ -305,15 +305,15 @@ private ServerSecurityContextRepository securityContextRepository = NoOpServerSe
 private ServerWebExchangeMatcher requiresAuthenticationMatcher = ServerWebExchangeMatchers.anyExchange();
 ```
 
-...by default an `AuthenticationWebFilter` would behave as a Http Basic filter without session. The only dependency that must be 
+...basically an `AuthenticationWebFilter` would behave as an Http Basic filter without session. The only dependency that must be 
 provided by the user is ([ReactiveAuthenticationManagerResolver](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManagerResolver.java)). 
 This interface resolves a [ReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManager.java) from a given context (ServerWebExchange in this case). 
-**This manager determines if the given Authentication is valid or not, for us an Authentication object contains the 
+**This manager holds the logic to determine if the given Authentication is valid or not, for us an Authentication object contains the 
 username and password of the user that we want to authenticate.** 
 
 But how we can do that? who is the responsible to convert the ServerWebExchange (incoming request) to an Authentication object? 
 
-To know that we must know before which path a ServerWebExchange follows when arrives to the AuthenticationWebFilter. This could 
+To know that, we must know before which path a ServerWebExchange follows when arrives to an AuthenticationWebFilter. This could 
 be seen in the source code of the `filter()` method of AuthenticationWebFilter:
 
 ```java
@@ -354,11 +354,13 @@ protected Mono<Void> onAuthenticationSuccess(Authentication authentication, WebF
 1. Checks if the request match a given pattern (any by default). This is done by [ServerWebExchangeMatcher](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/util/matcher/ServerWebExchangeMatcher.java). 
 If success, continue with step 2, if not skip this filter and continue the chain. 
 2. Converts the request to an unauthenticated Authentication object (from the Authorization header by default). This is done by [ServerAuthenticationConverter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/ServerAuthenticationConverter.java). 
-If the converter returns an empty Mono, continue the chain otherwise go step 3.
-3. Verify the Authentication object provided by step 2. This step is done by [ReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManager.java). If the verification is not successful (an AuthenticationException occurs) execute [ServerAuthenticationFailureHandler](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/ServerAuthenticationFailureHandler.java) (prompts a user for HTTP Basic authentication by default), otherwise go step 4. 
+If the converter returns an empty Mono, continue the chain otherwise go to step 3.
+3. Verify the Authentication object provided by step 2. This step is done by [ReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManager.java). If the verification is not successful (an AuthenticationException occurs) execute [ServerAuthenticationFailureHandler](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/ServerAuthenticationFailureHandler.java) (step 5), otherwise go step 4. 
 4. On authentication success:
     1. Save the Authentication object in the security context (session) (nothing is saved by default). By [ServerSecurityContextRepository](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/context/ServerSecurityContextRepository.java).
     2. Execute [ServerAuthenticationSuccessHandler](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/ServerAuthenticationSuccessHandler.java) (continue the chain by default).
+5. On authentication error:
+    1. Execute [ServerAuthenticationFailureHandler](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authentication/ServerAuthenticationFailureHandler.java) (prompts a user for HTTP Basic authentication by default).
 
 This is the general algorithm that AuthenticationWebFilter follows, and in which we can customize all steps or keep the default ones that are handy for us. 
 In our case, the steps that we are gonna replace are:
@@ -386,6 +388,28 @@ fun configureSecurity(http: ServerHttpSecurity, jwtAuthenticationFilter: Authent
             .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
             .build()
 }
+
+@Bean
+fun authenticationWebFilter(reactiveAuthenticationManager: ReactiveAuthenticationManager,
+                            jwtConverter: ServerAuthenticationConverter,
+                            serverAuthenticationSuccessHandler: ServerAuthenticationSuccessHandler,
+                            jwtServerAuthenticationFailureHandler: ServerAuthenticationFailureHandler): AuthenticationWebFilter {
+    val authenticationWebFilter = AuthenticationWebFilter(reactiveAuthenticationManager)
+    authenticationWebFilter.setRequiresAuthenticationMatcher { ServerWebExchangeMatchers.pathMatchers(HttpMethod.POST, "/login").matches(it) }
+    authenticationWebFilter.setServerAuthenticationConverter(jwtConverter)
+    authenticationWebFilter.setAuthenticationSuccessHandler(serverAuthenticationSuccessHandler)
+    authenticationWebFilter.setAuthenticationFailureHandler(jwtServerAuthenticationFailureHandler)
+    authenticationWebFilter.setSecurityContextRepository(NoOpServerSecurityContextRepository.getInstance())
+    return authenticationWebFilter
+}
+
+@Bean
+fun reactiveAuthenticationManager(reactiveUserDetailsService: CustomerReactiveUserDetailsService,
+                                  passwordEncoder: PasswordEncoder): ReactiveAuthenticationManager {
+    val manager = UserDetailsRepositoryReactiveAuthenticationManager(reactiveUserDetailsService)
+    manager.setPasswordEncoder(passwordEncoder)
+    return manager
+}
 ```
  
 At this point we have been customized our authentication flow, how should we authorize users to use our APIs?
@@ -394,7 +418,7 @@ At this point we have been customized our authentication flow, how should we aut
 
 Spring Security could be used to give permissions to our clients for use certain endpoints of our API, these permissions could be role based, scope based or both and are called [GrantedAuthority](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/core/GrantedAuthority.java). 
 We give permissions in the authentication process, in the ServerAuthenticationSuccessHandler when we generate the tokens 
-we have to add the roles in form of claims in the JWT. **(This part but is WIP)**
+we have to add the roles in form of claims in the JWT. **(This part is WIP)**
 
 In our application, we have two types of endpoints where we want to restrict access: 
 
