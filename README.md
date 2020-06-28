@@ -12,6 +12,10 @@ I made lot of mistakes, if you find them (in the code or in the README), please 
 I'm assuming that you have some knowledge with Spring Webflux (know what Mono and Flux is), so I will skip the explanation of Webflux, 
 but I'm going to shed new light on how we can work with Mono and Flux with Kotlin coroutines in an imperative way.
 
+# Try it
+
+http://test.popokis.com
+
 ## 1. Stack
 
 First things first, the stack we are gonna use is the following:
