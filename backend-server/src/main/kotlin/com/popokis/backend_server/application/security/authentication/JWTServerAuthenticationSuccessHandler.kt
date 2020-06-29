@@ -21,8 +21,9 @@ class JWTServerAuthenticationSuccessHandler(private val jwtService: JWTService) 
 
         when (principal) {
             is User -> {
-                val accessToken = jwtService.accessToken(principal.username, FIFTEEN_MIN)
-                val refreshToken = jwtService.refreshToken(principal.username, FOUR_HOURS)
+                val roles = principal.authorities.map { it.authority }.toTypedArray()
+                val accessToken = jwtService.accessToken(principal.username, FIFTEEN_MIN, roles)
+                val refreshToken = jwtService.refreshToken(principal.username, FOUR_HOURS, roles)
                 webFilterExchange?.exchange?.response?.headers?.set("Authorization", accessToken)
                 webFilterExchange?.exchange?.response?.headers?.set("JWT-Refresh-Token", refreshToken)
             }

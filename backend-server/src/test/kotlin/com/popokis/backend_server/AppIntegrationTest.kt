@@ -14,7 +14,9 @@ class AppIntegrationTest {
     @Autowired
     protected lateinit var jwtService: JWTService
 
-    protected fun accessToken() = accessToken("user@example.com")
+    protected fun accessToken() = accessToken("user@example.com", "ROLE_USER")
+    protected fun adminAccessToken() = accessToken("user@example.com", "ROLE_ADMIN")
 
-    protected fun accessToken(email: String) = "Bearer " + jwtService.accessToken(email, 1000 * 60)
+    protected fun accessToken(email: String, role: String) =
+            "Bearer " + jwtService.accessToken(email, 1000 * 60, arrayOf(role))
 }
