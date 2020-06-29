@@ -1,6 +1,7 @@
 package com.popokis.backend_server.application.login
 
 import com.popokis.backend_server.AppIntegrationTest
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Value
 
@@ -26,8 +27,10 @@ internal class LoginIntegrationTest : AppIntegrationTest() {
         val accessToken = responseHeaders["Authorization"]?.get(0)
         val refreshToken = responseHeaders["JWT-Refresh-Token"]?.get(0)
 
-        jwtService.decodeAccessToken(accessToken!!)
+        val decodedAccessToken = jwtService.decodeAccessToken(accessToken!!)
         jwtService.decodeRefreshToken(refreshToken!!)
+
+        assertTrue(jwtService.getRoles(decodedAccessToken).any { it.authority == "ROLE_USER" })
     }
 
     @Test

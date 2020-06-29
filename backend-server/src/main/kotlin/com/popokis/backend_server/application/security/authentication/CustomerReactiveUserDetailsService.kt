@@ -14,6 +14,6 @@ class CustomerReactiveUserDetailsService(private val customerRepository: Custome
 
     override fun findByUsername(username: String?): Mono<UserDetails> = mono {
         val customer = customerRepository.findByEmail(username!!) ?: throw BadCredentialsException("Invalid Credentials")
-        return@mono User(customer.email, customer.password, listOf())
+        return@mono User(customer.email, customer.password, listOf(customer))
     }
 }

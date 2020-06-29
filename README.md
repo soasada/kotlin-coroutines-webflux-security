@@ -427,12 +427,14 @@ At this point we have been customized our authentication flow, how should we aut
 
 Spring Security could be used to give permissions to our clients for use certain endpoints of our API, these permissions could be role based, scope based or both and are called [GrantedAuthority](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/core/GrantedAuthority.java). 
 We give permissions in the authentication process, in the ServerAuthenticationSuccessHandler when we generate the tokens 
-we have to add the roles in form of claims in the JWT. **(This part is WIP)**
+we have to add the roles in form of claims in the JWT (see [JWTServerAuthenticationSuccessHandler](/backend-server/src/main/kotlin/com/popokis/backend_server/application/security/authentication/JWTServerAuthenticationSuccessHandler.kt)).
 
-In our application, we have two types of endpoints where we want to restrict access: 
+In our application, we have three types of endpoints where we want to restrict access: 
 
-1. The public ones: endpoints that serves static files and `/login` endpoint. 
-2. The private ones: the rest. 
+1. **The public ones:** endpoints that serves static files and `/login` endpoint. 
+2. **The private ones:**
+    1. `/admin/**`: where only admin users can access, which means, clients that request our API with JWT that holds the admin role.
+    2. **the rest**: where registered and admin users can access, which means, clients that request our API with JWT that are issued by us.
 
 Spring Security Webflux has an interface that could be used to do authorization, this interface is: [ReactiveAuthorizationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authorization/ReactiveAuthorizationManager.java) and 
 is used to determine if an Authentication object has access to a specific endpoint. So basically, we have to implement our custom 
@@ -442,12 +444,14 @@ ReactiveAuthorizationManager and configure our chain with it. Do you remember wh
 @Bean
 fun configureSecurity(http: ServerHttpSecurity,
                       jwtAuthenticationFilter: AuthenticationWebFilter,
-                      jwtAuthorizationManager: ReactiveAuthorizationManager<AuthorizationContext>): SecurityWebFilterChain {
+                      jwtAuthorizationManager: JWTAuthorizationManager,
+                      jwtService: JWTService): SecurityWebFilterChain {
     return http
             .csrf().disable()
             .logout().disable()
             .authorizeExchange() // Configures authorization, now we can start adding matchers
             .pathMatchers(*EXCLUDED_PATHS).permitAll() // Matcher that allow requests to EXCLUDED_PATHS
+            .pathMatchers("/admin/**").access(JWTRoleAuthorizationManager(jwtService, "ADMIN")) // Matcher to admin access only
             .anyExchange().access(jwtAuthorizationManager) // Matcher that adds an access rule manager for any request
             .and()
             .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
@@ -458,28 +462,52 @@ fun configureSecurity(http: ServerHttpSecurity,
 
 With this configuration (see [WebConfig](https://github.com/soasada/kotlin-coroutines-webflux-security/blob/master/backend-server/src/main/kotlin/com/popokis/backend_server/application/WebConfig.kt)) we are adding an [AuthorizationWebFilter](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authorization/AuthorizationWebFilter.java) 
 to our chain, the important thing here is that Spring Security creates it (see [ServerHttpSecurity](https://github.com/spring-projects/spring-security/blob/master/config/src/main/java/org/springframework/security/config/web/server/ServerHttpSecurity.java#L2587)) with a [DelegatingReactiveAuthorizationManager](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/authorization/DelegatingReactiveAuthorizationManager.java) that holds a 
-ReactiveAuthorizationManager (the one who determines if the client has access or not) for each path matcher we configured: one for the excluded paths and one for the rest. 
-Each ReactiveAuthorizationManager is called when an enpoint match, so the `permitAll()` method is a ReactiveAuthorizationManager that always allow access and the 
-other is our custom ReactiveAuthorizationManager:
+ReactiveAuthorizationManager (the one who determines if the client has access or not) for each path matcher we configured: one for the excluded paths, one for admin path and another for the rest. 
+Each ReactiveAuthorizationManager is called when an endpoint match, so the `permitAll()` method is a ReactiveAuthorizationManager that always allow access, and the 
+others are our custom ReactiveAuthorizationManagers:
 
 ```kotlin
 @Component
-class JWTAuthorizationManager(private val jwtService: JWTService) : ReactiveAuthorizationManager<AuthorizationContext> {
+class JWTAuthorizationManager(private val jwtService: JWTService) : JWTReactiveAuthorizationManager {
+    override suspend fun getJwtService(): JWTService {
+        return jwtService
+    }
+
+    override suspend fun doAuthorization(jwtToken: DecodedJWT): AuthorizationDecision {
+        return AuthorizationDecision(true)
+    }
+}
+
+class JWTRoleAuthorizationManager(private val jwtService: JWTService, private val role: String) : JWTReactiveAuthorizationManager {
+    override suspend fun getJwtService(): JWTService {
+        return jwtService
+    }
+
+    override suspend fun doAuthorization(jwtToken: DecodedJWT): AuthorizationDecision {
+        return AuthorizationDecision(jwtService.getRoles(jwtToken).any { it.authority == "ROLE_$role" })
+    }
+}
+
+interface JWTReactiveAuthorizationManager : ReactiveAuthorizationManager<AuthorizationContext> {
+
     override fun check(authentication: Mono<Authentication>?, context: AuthorizationContext?): Mono<AuthorizationDecision> = mono {
-        val exchange = context?.exchange ?: return@mono AuthorizationDecision(false)
-        val authHeader = exchange.request.headers.getFirst(HttpHeaders.AUTHORIZATION) ?: return@mono AuthorizationDecision(false)
+        val notAuthorized = AuthorizationDecision(false)
+        val exchange = context?.exchange ?: return@mono notAuthorized
+        val authHeader = exchange.request.headers.getFirst(HttpHeaders.AUTHORIZATION) ?: return@mono notAuthorized
 
         if (!authHeader.startsWith("Bearer ")) {
-            return@mono AuthorizationDecision(false)
+            return@mono notAuthorized
         }
 
         try {
-            val decodedJWT = jwtService.decodeAccessToken(authHeader) // checks expiration and signature
-            return@mono AuthorizationDecision(true)
+            return@mono doAuthorization(getJwtService().decodeAccessToken(authHeader))
         } catch (e: Throwable) {
-            return@mono AuthorizationDecision(false)
+            return@mono notAuthorized
         }
     }
+
+    suspend fun getJwtService(): JWTService
+    suspend fun doAuthorization(jwtToken: DecodedJWT): AuthorizationDecision
 }
 ``` 
 
@@ -488,7 +516,9 @@ server, looking at the [AuthorizationWebFilter](https://github.com/spring-projec
 we can see that is using the security context to get the Authentication from there but we disabled sessions so there is no Authentication object, we have to authorize from 
 the request that is inside the AuthorizationContext.
 
-To authorize users, we are checking the validity of the JWT that comes in every request (for example, if we need to do a role based authorization this role should come in the JWT and we should check it here too). The validity for us is:
+To authorize admins, we check if the role that comes from the token in the request has the same role of the required, `ROLE_ADMIN` in this case.
+
+To authorize the rest, we are checking the validity of the JWT that comes in every request. The validity for us is:
 
 1. If the token is expired. 
 2. If token was given by us (is signed with our signature).
