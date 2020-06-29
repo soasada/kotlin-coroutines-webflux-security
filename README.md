@@ -16,6 +16,10 @@ but I'm going to shed new light on how we can work with Mono and Flux with Kotli
 
 http://test.popokis.com
 
+Login credentials:
+
+user@example.com : userPassword
+
 ## 1. Stack
 
 First things first, the stack we are gonna use is the following:
