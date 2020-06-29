@@ -16,7 +16,7 @@ but I'm going to shed new light on how we can work with Mono and Flux with Kotli
 
 http://test.popokis.com
 
-Login credentials:
+Go to 'Customers' menu section and try to login with:
 
 user@example.com : userPassword
 
