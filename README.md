@@ -18,7 +18,7 @@ http://test.popokis.com
 
 Go to 'Customers' menu section and try to login with:
 
-user@example.com : userPassword
+`user@example.com` : `userPassword`
 
 ## 1. Stack
 
