@@ -331,16 +331,16 @@ public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         .filter(matchResult -> matchResult.isMatch())
         .flatMap(matchResult -> this.authenticationConverter.convert(exchange)) // (2)
         .switchIfEmpty(chain.filter(exchange).then(Mono.empty()))
-        .flatMap(token -> authenticate(exchange, chain, token)) // (3)
+        .flatMap(token -> authenticate(exchange, chain, token))
         .onErrorResume(AuthenticationException.class, e -> this.authenticationFailureHandler
-            .onAuthenticationFailure(new WebFilterExchange(exchange, chain), e));
+            .onAuthenticationFailure(new WebFilterExchange(exchange, chain), e)); // (5.i)
 }
 
 private Mono<Void> authenticate(ServerWebExchange exchange, WebFilterChain chain, Authentication token) {
     return this.authenticationManagerResolver.resolve(exchange)
-        .flatMap(authenticationManager -> authenticationManager.authenticate(token))
+        .flatMap(authenticationManager -> authenticationManager.authenticate(token)) // (3)
         .switchIfEmpty(Mono.defer(() -> Mono.error(new IllegalStateException("No provider found for " + token.getClass()))))
-        .flatMap(authentication -> onAuthenticationSuccess(authentication, new WebFilterExchange(exchange, chain)))
+        .flatMap(authentication -> onAuthenticationSuccess(authentication, new WebFilterExchange(exchange, chain))) // (4)
         .doOnError(AuthenticationException.class, e -> {
             if (logger.isDebugEnabled()) {
                 logger.debug("Authentication failed: " + e.getMessage());
@@ -352,9 +352,9 @@ protected Mono<Void> onAuthenticationSuccess(Authentication authentication, WebF
     ServerWebExchange exchange = webFilterExchange.getExchange();
     SecurityContextImpl securityContext = new SecurityContextImpl();
     securityContext.setAuthentication(authentication);
-    return this.securityContextRepository.save(exchange, securityContext)
+    return this.securityContextRepository.save(exchange, securityContext) // (4.i)
         .then(this.authenticationSuccessHandler
-            .onAuthenticationSuccess(webFilterExchange, authentication))
+            .onAuthenticationSuccess(webFilterExchange, authentication)) // (4.ii)
         .subscriberContext(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(securityContext)));
 }
 ```
