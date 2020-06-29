@@ -354,6 +354,7 @@ protected Mono<Void> onAuthenticationSuccess(Authentication authentication, WebF
         .subscriberContext(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(securityContext)));
 }
 ```
+![AuthenticationWebFilter Flow](/diagrams/authentication_flow.png?raw=true "AuthenticationWebFilter Flow")
 
 1. Checks if the request match a given pattern (any by default). This is done by [ServerWebExchangeMatcher](https://github.com/spring-projects/spring-security/blob/master/web/src/main/java/org/springframework/security/web/server/util/matcher/ServerWebExchangeMatcher.java). 
 If success, continue with step 2, if not skip this filter and continue the chain. 

@@ -1,0 +1,27 @@
+@startuml
+start
+floating note left: <b>AuthenticationWebFilter Flow</b>
+:ServerWebExchangeMatcher.matches(exchange);
+note right: (1)
+if (matchResult.isMatch()) then (true)
+  :ServerAuthenticationConverter.convert(exchange);
+  note right: (2)
+  if (monoAuthentication.isNotEmpty()) then (true)
+    :ReactiveAuthenticationManager.authenticate(authentication);
+    note left: (3)
+    if (authentication.isAuthenticated()) then (true)
+      :ServerSecurityContextRepository.save(exchange);
+      note left: (4.i)
+      :ServerAuthenticationSuccessHandler;
+      note left: (4.ii)
+    else (AuthenticationException)
+      :ServerAuthenticationFailureHandler;
+      note left: (5.i)
+      stop
+    endif
+  else (false)
+  endif
+else (false)
+endif
+:Continue chain;
+@enduml
