@@ -313,13 +313,15 @@ private ServerSecurityContextRepository securityContextRepository = NoOpServerSe
 private ServerWebExchangeMatcher requiresAuthenticationMatcher = ServerWebExchangeMatchers.anyExchange();
 ```
 
-...basically an `AuthenticationWebFilter` would behave as an Http Basic filter without session. The only dependency that must be 
-provided by the user is ([ReactiveAuthenticationManagerResolver](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManagerResolver.java)). 
+...basically an `AuthenticationWebFilter` would behave as an Http Basic filter. The only dependency that must be 
+provided by the client of this class, is [ReactiveAuthenticationManagerResolver](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManagerResolver.java). 
 This interface resolves a [ReactiveAuthenticationManager](https://github.com/spring-projects/spring-security/blob/master/core/src/main/java/org/springframework/security/authentication/ReactiveAuthenticationManager.java) from a given context (ServerWebExchange in this case). 
-**This manager holds the logic to determine if the given Authentication is valid or not, for us an Authentication object contains the 
-username and password of the user that we want to authenticate.** 
+**This manager holds the logic to determine if the given Authentication object is valid or not, usually to do that this manager could 
+call a custom LDAP, database, etc.** In this repository we are going to implement our custom JWT based authentication, which means 
+that a client receives a token after a successful authentication. For us an Authentication object contains the 
+username and password of the user that we want to authenticate.
 
-But how we can do that? who is the responsible to convert the ServerWebExchange (incoming request) to an Authentication object? 
+How we can do that? We need to convert a ServerWebExchange (the incoming request) into an Authentication object, who is the responsible to do this? 
 
 To know that, we must know before which path a ServerWebExchange follows when arrives to an AuthenticationWebFilter. This could 
 be seen in the source code of the `filter()` method of AuthenticationWebFilter:
