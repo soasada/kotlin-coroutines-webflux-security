@@ -52,7 +52,7 @@ jobs:
     if: github.ref == 'refs/heads/master'
     env:
       KILL_JAVA_SH: ${{ github.workspace }}/ci/kill_java_process.sh
-      JAVA_CMD_PATH: /opt/prod_jdk/bin/java
+      JAVA_CMD_PATH: ~/jdk/bin/java
       JAR_NAME: backend-server-
     steps:
       - name: Check out repository
