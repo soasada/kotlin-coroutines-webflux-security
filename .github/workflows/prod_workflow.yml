@@ -1,4 +1,4 @@
-name: Minimal Example CI Kotlin
+name: Minimal Example CI
 
 on: [push]
 
