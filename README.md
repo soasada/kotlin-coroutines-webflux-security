@@ -14,7 +14,7 @@ but I'm going to shed new light on how we can work with Mono and Flux with Kotli
 
 # Try it
 
-http://test.popokis.com
+https://test.popokis.com
 
 Go to 'Customers' menu section and try to login with:
 
