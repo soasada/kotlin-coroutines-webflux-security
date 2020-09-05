@@ -25,7 +25,7 @@ Go to 'Customers' menu section and try to login with:
 First things first, the stack we are gonna use is the following:
 
 * OpenJDK 14
-* Kotlin 1.3.X
+* Kotlin 1.4.X
 * Spring Boot (Webflux + Security + Reactive Data MongoDB)
 * Maven
 * MongoDB 4.2 through docker
