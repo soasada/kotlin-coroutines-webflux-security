@@ -10,7 +10,7 @@
     <artifactId>backend-server</artifactId>
 
     <properties>
-        <kotlin.version>1.4.0</kotlin.version>
+        <kotlin.version>1.4.10</kotlin.version>
         <logstash-logback-encoder.version>6.4</logstash-logback-encoder.version>
         <java-jwt.version>3.10.3</java-jwt.version>
     </properties>
