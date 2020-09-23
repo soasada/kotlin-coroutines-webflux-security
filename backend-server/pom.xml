@@ -3,7 +3,7 @@
     <parent>
         <artifactId>kotlin-coroutines-webflux-security</artifactId>
         <groupId>com.popokis</groupId>
-        <version>0.0.19-SNAPSHOT</version>
+        <version>0.0.20-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
