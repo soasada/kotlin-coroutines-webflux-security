@@ -12,7 +12,7 @@
     <groupId>com.popokis</groupId>
     <artifactId>kotlin-coroutines-webflux-security</artifactId>
     <packaging>pom</packaging>
-    <version>0.0.20-SNAPSHOT</version>
+    <version>0.0.21-SNAPSHOT</version>
 
     <modules>
         <module>backend-server</module>
