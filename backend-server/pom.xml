@@ -12,7 +12,7 @@
     <properties>
         <kotlin.version>1.4.10</kotlin.version>
         <logstash-logback-encoder.version>6.4</logstash-logback-encoder.version>
-        <java-jwt.version>3.10.3</java-jwt.version>
+        <java-jwt.version>3.11.0</java-jwt.version>
     </properties>
 
     <dependencies>
