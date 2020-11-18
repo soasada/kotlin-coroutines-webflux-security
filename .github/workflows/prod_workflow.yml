@@ -1,4 +1,4 @@
-name: Minimal CI/CD
+name: Minimal CI/CD2
 
 on: [push]
 
