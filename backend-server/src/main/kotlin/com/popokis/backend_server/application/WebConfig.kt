@@ -2,8 +2,7 @@ package com.popokis.backend_server.application
 
 import com.popokis.backend_server.application.security.JWTService
 import com.popokis.backend_server.application.security.authentication.CustomerReactiveUserDetailsService
-import com.popokis.backend_server.application.security.authorization.JWTAuthorizationManager
-import com.popokis.backend_server.application.security.authorization.JWTRoleAuthorizationManager
+import com.popokis.backend_server.application.security.authorization.JWTReactiveAuthorizationFilter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.io.ClassPathResource
@@ -42,17 +41,17 @@ class WebConfig : WebFluxConfigurer {
     @Bean
     fun configureSecurity(http: ServerHttpSecurity,
                           jwtAuthenticationFilter: AuthenticationWebFilter,
-                          jwtAuthorizationManager: JWTAuthorizationManager,
                           jwtService: JWTService): SecurityWebFilterChain {
         return http
                 .csrf().disable()
                 .logout().disable()
                 .authorizeExchange()
                 .pathMatchers(*EXCLUDED_PATHS).permitAll()
-                .pathMatchers("/admin/**").access(JWTRoleAuthorizationManager(jwtService, "ADMIN"))
-                .anyExchange().access(jwtAuthorizationManager)
+                .pathMatchers("/admin/**").hasRole("ADMIN")
+                .anyExchange().authenticated()
                 .and()
                 .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+                .addFilterAt(JWTReactiveAuthorizationFilter(jwtService), SecurityWebFiltersOrder.AUTHORIZATION)
                 .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
                 .build()
     }
