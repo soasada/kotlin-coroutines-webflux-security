@@ -24,7 +24,7 @@ Go to 'Customers' menu section and try to login with:
 
 First things first, the stack we are gonna use is the following:
 
-* OpenJDK 14
+* OpenJDK 15
 * Kotlin 1.4.X
 * Spring Boot (Webflux + Security + Reactive Data MongoDB)
 * Maven
@@ -32,7 +32,7 @@ First things first, the stack we are gonna use is the following:
 * Vue.js
 
 If you take a look at the parent [pom.xml](/pom.xml) of the project, you will see that we are compiling to java 11 
-but this project runs in a OpenJDK 14 JVM. This is because Kotlin does not support java 14 bytecode yet.
+but this project runs in a OpenJDK 15 JVM. This is because Kotlin does not support java 15 bytecode yet.
 
 ## 2. Project Structure
 
