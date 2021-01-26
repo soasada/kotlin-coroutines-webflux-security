@@ -21,7 +21,6 @@
 
     <properties>
         <java.version>15</java.version>
-        <kotlin.version>1.4.21</kotlin.version>
         <maven-release-plugin.version>3.0.0-M1</maven-release-plugin.version>
         <maven-help-plugin.version>3.2.0</maven-help-plugin.version>
     </properties>
