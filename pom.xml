@@ -20,8 +20,8 @@
     </modules>
 
     <properties>
-        <java.version>15</java.version>
-        <maven-release-plugin.version>3.0.0-M1</maven-release-plugin.version>
+        <java.version>16</java.version>
+        <maven-release-plugin.version>3.0.0-M4</maven-release-plugin.version>
         <maven-help-plugin.version>3.2.0</maven-help-plugin.version>
     </properties>
 
